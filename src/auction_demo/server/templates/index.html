@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leilão por Voz — Vosk PT-BR</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="badges">
+        <span class="badge badge-model" id="modelBadge">{{ model }}</span>
+        <span class="badge badge-grammar" id="grammarBadge">
+          {% if grammar_enabled %}grammar: {{ grammar }} frases{% else %}grammar: off{% endif %}
+        </span>
+        <span class="badge badge-version">contract v{{ contract_version }}</span>
+      </div>
+      <h1>Leilão por Voz</h1>
+      <p class="subtitle">
+        Segure <kbd>Espaço</kbd> e fale seu lance. Solte para processar.
+      </p>
+    </header>
+
+    <section class="ptt" id="ptt" role="button" tabindex="0" aria-label="Segure para falar">
+      <div class="ptt-ring"></div>
+      <div class="ptt-content">
+        <div class="ptt-icon">🎤</div>
+        <div class="ptt-title" id="pttTitle">Segure ESPAÇO para falar</div>
+        <div class="ptt-timer" id="pttTimer">0.0s</div>
+      </div>
+    </section>
+
+    <section class="partial" aria-live="polite">
+      <span class="partial-label">ouvindo</span>
+      <span class="partial-text" id="partialText">—</span>
+    </section>
+
+    <section class="result" id="result">
+      <div class="result-main">
+        <div class="value" id="resultValue">R$ 0,00</div>
+        <div class="meta">
+          <span class="chip" id="resultKind">—</span>
+          <span class="chip" id="resultMode">—</span>
+          <span class="chip chip-latency" id="resultLatency">—</span>
+        </div>
+      </div>
+      <div class="flags">
+        <div class="flag" id="flagAdd">
+          <span class="flag-name">has_addition</span>
+          <span class="flag-value">false</span>
+        </div>
+        <div class="flag" id="flagSum">
+          <span class="flag-name">has_sum</span>
+          <span class="flag-value">false</span>
+        </div>
+        <div class="flag" id="flagMult">
+          <span class="flag-name">has_multiplication</span>
+          <span class="flag-value">false</span>
+        </div>
+      </div>
+      <div class="numbers" id="resultNumbers"></div>
+    </section>
+
+    <section class="nbest" id="nbestPanel" hidden>
+      <h2>Alternativas do decodificador</h2>
+      <ul id="nbestList"></ul>
+    </section>
+
+    <section class="output">
+      <div class="output-head">
+        <h2>Histórico</h2>
+        <div class="output-actions">
+          <label class="toggle">
+            <input type="checkbox" id="appendToggle" checked>
+            <span>acumular</span>
+          </label>
+          <button class="btn btn-ghost" id="clearBtn" type="button">Limpar</button>
+          <button class="btn btn-primary" id="copyBtn" type="button">Copiar tudo</button>
+        </div>
+      </div>
+      <textarea id="log" readonly spellcheck="false"
+        placeholder="Os lances reconhecidos aparecerão aqui..."></textarea>
+      <div class="output-foot">
+        <span id="charCount">0 caracteres</span>
+        <span id="statusText">pronto</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

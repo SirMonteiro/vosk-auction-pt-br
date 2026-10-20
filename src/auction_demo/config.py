@@ -51,8 +51,10 @@ class Settings:
 
     # --- decoding --------------------------------------------------------
     use_grammar: bool = field(default_factory=lambda: _env_bool("AUCTION_GRAMMAR", True))
-    # Curated default from the plan (2 379 phrases measured equal to 14 202).
-    grammar_max_phrases: int = 2_500
+    # Curated default: 6 000 phrases fits every priority layer (all 0-999 and
+    # "N mil" forms, plus frames, idioms and intents) at 82 KB / 11 ms worst
+    # chunk. The measured ceiling is 15 000.
+    grammar_max_phrases: int = 6_000
     # Hard ceiling: above this the decoder latency collapses without accuracy gain.
     grammar_hard_limit: int = 15_000
     nbest: int = field(default_factory=lambda: _env_int("AUCTION_NBEST", 5))

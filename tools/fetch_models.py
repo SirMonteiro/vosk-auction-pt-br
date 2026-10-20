@@ -54,14 +54,18 @@ def _md5(path: Path, chunk_size: int = 1 << 20) -> str:
 
 
 def _download(url: str, destination: Path) -> None:
-    """Download with a simple progress line on stderr."""
+    """Download with a throttled progress line on stderr (one update per 5%)."""
+    state = {"last": -1}
+
     def hook(block_num: int, block_size: int, total_size: int) -> None:
         if total_size <= 0:
             return
         downloaded = min(block_num * block_size, total_size)
-        percent = downloaded * 100 / total_size
-        sys.stderr.write(f"\r  {percent:5.1f}%  {downloaded / 1e6:7.1f} MB")
-        sys.stderr.flush()
+        percent = int(downloaded * 100 / total_size)
+        if percent // 5 != state["last"]:
+            state["last"] = percent // 5
+            sys.stderr.write(f"\r  {percent:3d}%  {downloaded / 1e6:7.1f} MB")
+            sys.stderr.flush()
 
     urllib.request.urlretrieve(url, destination, reporthook=hook)  # noqa: S310 - fixed https URL
     sys.stderr.write("\n")

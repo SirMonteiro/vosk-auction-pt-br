@@ -192,6 +192,11 @@ DENOMINATIONS: Final[dict[str, float]] = {
     "lobo guará": 200.0,
     "lobos guará": 200.0,
     "lobinho": 200.0,
+    # Dozens: "meia dúzia" = 6, "dúzia e meia" = 18.
+    "dúzia": 12.0,
+    "dúzias": 12.0,
+    "duzia": 12.0,
+    "duzias": 12.0,
 }
 
 #: Single digits, used for the spelled-digit fast path ("sete seis" -> 76).

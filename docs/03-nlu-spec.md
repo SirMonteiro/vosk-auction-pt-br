@@ -151,7 +151,7 @@ Detection order is fixed; the first match wins.
 | `value` | final numeric value (absolute reais, or delta, see `value_mode`) |
 | `int_value` | `int(round(value))` |
 | `value_mode` | `absolute` \| `delta` \| `sum` \| `multiply` |
-| `has_addition` | legacy: `True` iff `value_mode == "delta"` or a `+` chain was summed |
+| `has_addition` | legacy: `True` iff `value_mode == "delta"` (a leading `mais`/`cobre`/... marker) |
 | `has_sum` | legacy alias of `has_addition` (kept identical for compatibility) |
 | `has_multiplication` | `True` iff a multiplier verb/noun was applied |
 | `action_type` | `BID` \| `PASS` \| `MULTIPLY_ONLY` \| `NONE` \| `CHANT` \| `QUERY` \| `CORRECT` \| `LOT` |
