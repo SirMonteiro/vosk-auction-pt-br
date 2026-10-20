@@ -88,10 +88,13 @@ The demo therefore targets Vosk only. Whisper files stay untouched as reference.
 | espeak/piper system voices | absent (Piper installed via pip for tooling) |
 | Docker/Podman | unusable (rootless permission errors) |
 
-Consequence: **no container-based Kaldi build**. LM tooling must either use a `conda-forge`
-`openfst` package or a local build; see `05-finetuning-plan.md`.
+Consequence: **no container-based Kaldi build**. A local source build was required; the working
+versions are pinned in `05-finetuning-plan.md` (openfst 1.8.4 + opengrm 1.3.17).
 
-## 4. Measured Vosk behavior (the basis for the architecture)
+## 4. Measured Vosk behavior (baseline, before the LM rebuild)
+
+Everything in this section was measured with the **unmodified** `vosk-model-small-pt-0.3`.
+Section 5 shows what changes after the LM rebuild — read both before drawing conclusions.
 
 All numbers reproducible; see `08-measurements-appendix.md`.
 
