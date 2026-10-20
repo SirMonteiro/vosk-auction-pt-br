@@ -343,8 +343,9 @@ Install size: 42 MB (openfst) + 110 MB (opengrm build tree).
 
 `Gr.fst`: 4 133 967 bytes (base: 16 007 119), 775 states, 4 189 arcs, ngram type.
 
-Runtime grammar still restricts on the rebuilt model (`["um","dois"]` + `cinquenta reais` → `cem`,
-i.e. forced into the allowed vocabulary).
+Runtime grammar still restricts on the rebuilt model: with grammar `["um","dois","cem"]`, the
+utterance `cinquenta reais` decodes as `cem` — forced into the allowed vocabulary, not passed
+through. So the rebuilt `Gr.fst` does not break the dynamic-graph path.
 
 ### 15.4 Grammar interaction (important)
 

@@ -215,7 +215,8 @@ Measured effect on the 40-case suite (TTS, padded, `vosk_python` evaluator):
 | `small` + rebuilt `Gr.fst` | **37–38/40** | 40/40 | 39/40 | **0.026–0.031** | 0.18 s | 498 MB |
 
 The rebuilt `Gr.fst` is 4.1 MB versus 16.0 MB in the base model, decoding is **~8× faster**, and
-the model still honours runtime grammar restriction (verified with `["um","dois"]` → `[unk]`).
+the model still honours runtime grammar restriction (verified: grammar `["um","dois","cem"]` forces
+`cinquenta reais` to decode as `cem` instead of passing it through).
 
 Two findings that constrain the design:
 
