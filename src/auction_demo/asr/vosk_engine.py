@@ -107,6 +107,7 @@ class VoskSession:
         self._last_partial = ""
         self._first_partial_at: float | None = None
         self._final_at: float | None = None
+        self._segments: list[tuple[str, list[Alternative]]] = []
 
     # ------------------------------------------------------------------
     def start(self) -> None:
@@ -116,6 +117,7 @@ class VoskSession:
             self._last_partial = ""
             self._first_partial_at = None
             self._final_at = None
+            self._segments = []
 
     def feed(self, pcm: bytes) -> str | None:
         """Consume PCM and return a partial transcript only when it changed."""
@@ -124,22 +126,31 @@ class VoskSession:
         with self._lock:
             finished = self._recognizer.AcceptWaveform(pcm)
             if finished:
-                # An endpoint fired mid-stream; the text is already final for
-                # that segment, so surface it as a partial rather than losing it.
+                # An endpoint fired mid-stream; accumulate the segment so
+                # subsequent silence does not lose already-recognized text.
                 payload = json.loads(self._recognizer.Result())
+                alternatives = _parse_alternatives(payload)
                 text = payload.get("text", "").strip()
-                if text and text != self._last_partial:
-                    self._last_partial = text
+                if not text and alternatives:
+                    text = alternatives[0].text.strip()
+                if text:
+                    self._segments.append((text, alternatives))
+
+                prefix = " ".join(t for t, _ in self._segments).strip()
+                if prefix and prefix != self._last_partial:
+                    self._last_partial = prefix
                     self._first_partial_at = self._first_partial_at or time.perf_counter()
-                    return text
+                    return prefix
                 return None
 
             payload = json.loads(self._recognizer.PartialResult())
             partial = payload.get("partial", "").strip()
-            if partial and partial != self._last_partial:
-                self._last_partial = partial
+            prefix = " ".join(t for t, _ in self._segments).strip()
+            current = f"{prefix} {partial}".strip() if prefix else partial
+            if current and current != self._last_partial:
+                self._last_partial = current
                 self._first_partial_at = self._first_partial_at or time.perf_counter()
-                return partial
+                return current
             return None
 
     def finish(self) -> ASRResult:
@@ -147,14 +158,26 @@ class VoskSession:
             payload = json.loads(self._recognizer.FinalResult())
             self._final_at = time.perf_counter()
 
-        alternatives = _parse_alternatives(payload)
-        text = payload.get("text", "").strip()
-        if not text and alternatives:
-            text = alternatives[0].text
+        final_alts = _parse_alternatives(payload)
+        final_text = payload.get("text", "").strip()
+        if not final_text and final_alts:
+            final_text = final_alts[0].text.strip()
+        if final_text:
+            self._segments.append((final_text, final_alts))
+
+        all_texts = [t for t, _ in self._segments if t]
+        combined_text = " ".join(all_texts).strip()
+
+        if not self._segments:
+            alternatives = []
+        elif len(self._segments) == 1:
+            alternatives = self._segments[0][1]
+        else:
+            alternatives = [Alternative(text=combined_text)]
 
         decode_ms = (self._final_at - self._started) * 1000
         return ASRResult(
-            text=text,
+            text=combined_text,
             alternatives=alternatives,
             duration_s=0.0,
             decode_ms=decode_ms,

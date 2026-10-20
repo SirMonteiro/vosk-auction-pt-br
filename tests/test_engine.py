@@ -128,3 +128,32 @@ def test_engine_survives_a_reset_cycle(engine) -> None:
             session.feed(pcm[offset : offset + 3200])
         session.finish()
         session.reset()
+
+
+@requires_model
+def test_engine_preserves_speech_when_followed_by_silence(engine) -> None:
+    """Holding push-to-talk after speaking causes Kaldi endpointing to fire
+
+    during session.feed(); session.finish() must not lose the completed segment.
+    """
+    import wave
+
+    wav_path = PROJECT_ROOT / "data" / "corpus" / "audio" / "e2e-006.wav"
+    if not wav_path.is_file():
+        pytest.skip("data/corpus audio missing")
+
+    with wave.open(str(wav_path), "rb") as handle:
+        pcm = handle.readframes(handle.getnframes())
+
+    session = engine.create_session()
+    session.start()
+    for offset in range(0, len(pcm), 3200):
+        session.feed(pcm[offset : offset + 3200])
+
+    # Feed 1.5 seconds of silence
+    for _ in range(15):
+        session.feed(audio_utils.silence(100))
+
+    result = session.finish()
+    assert "quarenta" in result.text
+    assert len(result.alternatives) > 0

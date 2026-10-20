@@ -55,9 +55,35 @@ def pad_utterance(
     return silence(lead_ms, sample_rate) + pcm + silence(tail_ms, sample_rate)
 
 
+def max_window_rms(pcm: bytes, window_ms: int = 100, sample_rate: int = 16_000) -> float:
+    """Maximum RMS amplitude across any sliding window of ``window_ms``."""
+    if not pcm:
+        return 0.0
+    samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+    win_size = int(sample_rate * window_ms / 1000)
+    if len(samples) <= win_size:
+        return float(np.sqrt(np.mean(samples**2))) if len(samples) > 0 else 0.0
+    stride = max(1, win_size // 2)
+    max_val = 0.0
+    for i in range(0, len(samples) - win_size + 1, stride):
+        win_rms = float(np.sqrt(np.mean(samples[i : i + win_size] ** 2)))
+        if win_rms > max_val:
+            max_val = win_rms
+    return max_val
+
+
 def is_silent(pcm: bytes, threshold: float = 0.004) -> bool:
-    """True when the buffer is too quiet to contain speech."""
-    return rms(pcm) < threshold
+    """True when the buffer is too quiet to contain speech.
+
+    For short buffers (<= 250 ms), global RMS is used. For longer buffers,
+    sliding max window RMS prevents speech from being masked/diluted by
+    surrounding silence when push-to-talk is held before or after speaking.
+    """
+    if not pcm:
+        return True
+    if duration_ms(pcm) <= 250:
+        return rms(pcm) < threshold
+    return max_window_rms(pcm, window_ms=100) < threshold
 
 
 def trim_trailing_silence(pcm: bytes, sample_rate: int = 16_000, keep_ms: int = 100) -> bytes:

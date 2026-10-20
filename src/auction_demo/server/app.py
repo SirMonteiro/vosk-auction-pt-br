@@ -168,9 +168,11 @@ def _evaluate(engine: VoskEngine, settings: Settings, pcm: bytes):
     Gating runs on the original buffer; only the audio handed to the decoder is
     trimmed of its trailing silence and padded.
     """
-    gated = _build_result(engine, settings, ASRResult(text=""), pcm)
-    if gated.bid_kind != "UNKNOWN" or gated.reason is None:
-        return gated
+    duration = duration_ms(pcm, settings.sample_rate)
+    if duration < settings.min_utterance_ms:
+        return _build_result(engine, settings, ASRResult(text=""), pcm, reason="too_short")
+    if is_silent(pcm, settings.min_rms):
+        return _build_result(engine, settings, ASRResult(text=""), pcm, reason="silence")
 
     trimmed = trim_trailing_silence(pcm, settings.sample_rate)
     padded = pad_utterance(
@@ -183,7 +185,7 @@ def _evaluate(engine: VoskEngine, settings: Settings, pcm: bytes):
     return _build_result(engine, settings, asr, pcm)
 
 
-def _build_result(engine: VoskEngine, settings: Settings, asr, pcm: bytes):
+def _build_result(engine: VoskEngine, settings: Settings, asr, pcm: bytes, reason: str | None = None):
     """Turn an :class:`ASRResult` into a :class:`BidResult` with gating.
 
     Gating uses the *unpadded* buffer: RMS measured on padded audio would clear
@@ -194,19 +196,21 @@ def _build_result(engine: VoskEngine, settings: Settings, asr, pcm: bytes):
 
     duration = duration_ms(pcm, settings.sample_rate)
 
-    def rejected(reason: str) -> BidResult:
+    def rejected(r: str) -> BidResult:
         return BidResult(
             raw_transcript=asr.text,
             action_type="NONE",
             bid_kind="UNKNOWN",
             currency=format_brazilian_currency(0.0),
-            reason=reason,
+            reason=r,
             latency_ms=asr.decode_ms,
         )
 
+    if reason is not None:
+        return rejected(reason)
     if duration < settings.min_utterance_ms:
         return rejected("too_short")
-    if is_silent(pcm, settings.min_rms):
+    if not asr.text and is_silent(pcm, settings.min_rms):
         return rejected("silence")
 
     candidates = asr.nbest_texts()

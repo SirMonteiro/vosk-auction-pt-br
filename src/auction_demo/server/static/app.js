@@ -54,7 +54,8 @@
     spaceDown: false,
     startedAt: 0,
     timer: null,
-    pending: [],
+    streamBuffer: [],
+    streamBufferSamples: 0,
     preRoll: [],
     preRollSamples: 0,
     lastResult: null,
@@ -129,7 +130,13 @@
   // ------------------------------------------------------------------
   function onAudio(float32) {
     if (state.recording) {
-      state.pending.push(float32);
+      state.streamBuffer.push(float32);
+      state.streamBufferSamples += float32.length;
+      while (state.streamBufferSamples >= FRAME_SAMPLES) {
+        const frame = popSamples(state.streamBuffer, FRAME_SAMPLES);
+        state.streamBufferSamples -= FRAME_SAMPLES;
+        sendAudio(frame);
+      }
       return;
     }
     // Idle: keep only the last PRE_ROLL_SAMPLES for first-syllable protection.
@@ -138,6 +145,24 @@
     while (state.preRollSamples > PRE_ROLL_SAMPLES && state.preRoll.length > 1) {
       state.preRollSamples -= state.preRoll.shift().length;
     }
+  }
+
+  function popSamples(chunks, needed) {
+    const out = new Float32Array(needed);
+    let written = 0;
+    while (written < needed && chunks.length > 0) {
+      const first = chunks[0];
+      const available = first.length;
+      const toCopy = Math.min(available, needed - written);
+      out.set(first.subarray(0, toCopy), written);
+      written += toCopy;
+      if (toCopy < available) {
+        chunks[0] = first.subarray(toCopy);
+      } else {
+        chunks.shift();
+      }
+    }
+    return out;
   }
 
   function floatToInt16(float32) {
@@ -227,7 +252,8 @@
     const begin = () => {
       state.recording = true;
       state.startedAt = performance.now();
-      state.pending = [];
+      state.streamBuffer = [];
+      state.streamBufferSamples = 0;
       el.ptt.classList.add("recording");
       el.pttTitle.textContent = "Gravando… solte para processar";
       el.partial.textContent = "—";
@@ -266,10 +292,12 @@
     el.pttTitle.textContent = "Processando…";
     setStatus("decodificando");
 
-    // Flush buffered audio, then 400 ms of silence, then stop.
-    flushFrames(state.pending);
-    state.pending = [];
-    sendAudio(new Float32Array((SAMPLE_RATE * TAIL_SILENCE_MS) / 1000));
+    // Flush any remaining buffered audio frames (< 100 ms)
+    if (state.streamBuffer.length) {
+      flushFrames(state.streamBuffer);
+      state.streamBuffer = [];
+      state.streamBufferSamples = 0;
+    }
 
     if (state.socket && state.socket.readyState === WebSocket.OPEN) {
       state.socket.send(JSON.stringify({ type: "stop" }));
