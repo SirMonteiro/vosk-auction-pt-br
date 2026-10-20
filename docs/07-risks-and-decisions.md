@@ -10,7 +10,7 @@
 | D-4 | TTS corpus only for now | No human recordings available yet; schema stays human-ready |
 | D-5 | Default model = `vosk-model-small-pt-0.3` | 145 MB RSS, grammar works, 0.2 s load, CPU-only |
 | D-6 | `pruned` = opt-in only | 1.8 GB RSS, and **it ignores runtime grammar** (measured) |
-| D-7 | Grammar = phrase list, accented, ≤ 15 000 entries | Measured: word lists truncate; accents required; above 15 k latency collapses without accuracy gain |
+| D-7 | Grammar = phrase list, accented, **curated ~2.4 k by default**, hard cap 15 000 | Measured: word lists truncate; accents required; curated 2 379 scores the same as 14 202; above 15 k latency collapses without accuracy gain |
 | D-8 | `conto` = ×1000 (R$ 1 000) | Correct Brazilian usage; the old code treated `cem conto` as R$ 100, which is wrong. **This changes a legacy test** (`cem conto` 100 → 100 000) |
 | D-9 | Parser semantics from `vosk-python`, not `whisper-auction-pt-br` | 40/40 vs 38/40 on the text suite; `whisper` parser drops chained `mais` |
 | D-10 | Phonetic repair rewritten, never applied to intent words | Current code turns `quero`→`zero` and `sem lance`→`cem lance` |

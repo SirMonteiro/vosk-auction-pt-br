@@ -113,13 +113,16 @@ Conclusion: grammar restriction is a **small-only** feature.
 
 | Entries | JSON | Build | Total decode | Max chunk |
 |---|---|---|---|---|
+| 2 379 (curated) | 66 KB | 2 ms | — | ~7 ms |
 | 14 202 | 494 KB | 22 ms | — | ~9 ms |
 | 102 026 | 4.6 MB | — | — | — |
 | 842 562 | 43 MB | 1 571 ms | — | — |
 | 3 504 660 | 190 MB | 6 905 ms | — | — |
 | 906 000 | 47.6 MB | 1 690 ms | 21–28 ms/utterance | — |
 
-Accuracy did not improve from 14 k → 842 k (31/40 both). RTF at 842 k: 0.93.
+Grammar **content** matters more than size: the curated 2 379-phrase set scored 37/40 on the base
+model, while a 14 202-phrase set built from a different template family scored 31/40 and an
+842 562-phrase set also scored 31/40 (RTF 0.93). Larger did not mean better.
 
 ## 5. Streaming latency
 

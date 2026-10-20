@@ -62,7 +62,8 @@ Unity side: `AudioClip`/`Microphone` → `float[]` → `short[]` → `byte[]` �
   "reason": null,
   "closing": false,
   "target_value": null,
-  "lot": null
+  "lot": null,
+  "trace": {}
 }
 ```
 
@@ -81,6 +82,7 @@ Field notes:
 | `target_value` | float? | for `CORRECT` with an explicit new value |
 | `lot` | int? | for `LOT` |
 | `reason` | string? | why `NONE` (`silence`, `too_short`, `needs_current_bid`, `unknown`) |
+| `trace` | object | empty unless the server runs with `--debug`; never required by the client |
 
 Unity must switch on `bid_kind`, not on `action_type` (the latter is legacy compatibility).
 
@@ -112,6 +114,7 @@ public class BidResult {
     public bool closing;
     public float? target_value;
     public int? lot;
+    public string trace; // raw JSON; ignored unless debugging
 }
 ```
 

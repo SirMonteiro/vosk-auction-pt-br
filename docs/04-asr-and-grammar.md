@@ -54,10 +54,13 @@ Hard rules learned from measurement:
 5. **Chants/fillers**: `redondo`, `na lata`, `sem troco`, `tá dado`, `e fechando`, `mil em cima`.
 6. **Spelled digits**: `zero`–`nove` pairs used by the digit-reading mode.
 
-Priority when trimming to 15 000: intents/idioms (never trimmed) → numbers ≤ 999 → `N mil` →
-currency frames → spelled digits. Trimming is deterministic (sorted) and reported.
+Default build is **curated (~2.4 k)**: intents, idioms, the number set up to 999, `N mil`, and a
+small currency-frame set. The full expansion (14 202) is available with `--full` for comparison.
+Priority when trimming to the hard cap of 15 000: intents/idioms (never trimmed) → numbers ≤ 999 →
+`N mil` → currency frames → spelled digits. Trimming is deterministic (sorted) and reported.
 
-Measured sizes: 14 202 phrases / 494 KB / 22 ms build. Accuracy does not improve above this.
+Measured sizes: curated 2 379 phrases / 66 KB / 2 ms; full 14 202 / 494 KB / 22 ms. Accuracy is
+the same (37/40 on base, 37/40 with rebuilt LM).
 
 **Numbers are mandatory.** An intent-only grammar (103 phrases) scored **18/40** on the 40-case
 suite, because the grammar replaces the LM entirely rather than biasing it: `quarenta e sete` →
@@ -79,20 +82,27 @@ Default in the demo: **LM rebuilt + curated grammar** (keeps OOD rejection, no a
 
 ### 2.3 Validation report
 
-- `tools/build_grammar.py` (new, planned) wraps the generator and prints the validation report.
+`tools/build_grammar.py` (new, planned) wraps the generator and prints the validation report.
+
+Two measured sizes are relevant:
+
+- **curated default** (what ships): 2 379 phrases / 66 KB / ~2 ms build — scored 37/40 on the base
+  model, 37/40 with the rebuilt LM.
+- **full numeric expansion**: 14 202 phrases / 494 KB / 22 ms build — same accuracy on the curated template family, more RAM.
 
 ```
-grammar: 14202 phrases, 494 KB
-  numbers      11800
-  idioms         210
-  intents         64
-  frames        2100
-  dropped (OOV)   16  → data/reports/grammar-oov.txt
-  build           22 ms
+grammar: 2379 phrases, 66 KB
+  numbers       1893
+  idioms          96
+  intents         31
+  frames         359
+  dropped (OOV)    7  → data/reports/grammar-oov.txt
+  build            2 ms
 ```
 
-OOV entries are expected for `small` (`oitão`, `xuxa`, `goiás`, `quadruplico`…). They are covered
-by NLU fallbacks (`três oitão` → 38) rather than by the grammar.
+OOV entries are expected for `small` (`oitão`, `xuxa`, `goiás`, `guará`, `barrigudas`, `bujões`,
+`dou-lhe`). They are covered by NLU fallbacks (`três oitão` → 38) rather than by the grammar.
+
 
 ### 2.4 Grammar on/off
 

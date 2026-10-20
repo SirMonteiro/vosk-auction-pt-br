@@ -123,11 +123,13 @@ assumes grammar restriction on `pruned`; grammar is a `small`-only feature.
 
 | Phrases | JSON | Build | Max chunk latency | RTF |
 |---|---|---|---|---|
+| 2 379 (curated) | 66 KB | 2 ms | ~7 ms | 0.03 |
 | 14 202 | 494 KB | 22 ms | ~9 ms | 0.03 |
 | 842 562 | 43 MB | 1.57 s | — | 0.93 |
 | 3 504 660 | 190 MB | 6.9 s | — | 3.9–4.25 |
 
-No accuracy gain above ~14 k. **Hard cap: 15 000 phrases.** The builder must refuse, not degrade.
+No accuracy gain above ~2.4 k curated. **Hard cap: 15 000 phrases.** The builder must refuse, not
+degrade.
 
 ### 4.4 Accents are mandatory
 

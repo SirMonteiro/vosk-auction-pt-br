@@ -273,6 +273,9 @@ asserting no false positives on a 200-word Portuguese stoplist.
   "confidence": 0.82,
   "latency_ms": 38.4,
   "reason": null,
+  "closing": false,
+  "target_value": null,
+  "lot": null,
   "trace": {}
 }
 ```

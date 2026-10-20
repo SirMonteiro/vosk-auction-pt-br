@@ -122,7 +122,7 @@ tail_silence_ms: int = 400
 min_utterance_ms: int = 250
 min_rms: float = 0.004
 use_grammar: bool = True
-grammar_max_phrases: int = 15_000
+grammar_max_phrases: int = 2_500   # curated default; hard ceiling 15_000
 nbest: int = 5
 host: str = "127.0.0.1"
 port: int = 5000
@@ -162,19 +162,27 @@ nbest: list[NBestItem]          # text, score, chosen: bool
 value: float
 int_value: int
 currency: str
+value_mode: str                 # absolute | delta | sum | multiply
 has_addition: bool
 has_sum: bool
 has_multiplication: bool
 action_type: str                # BID | PASS | MULTIPLY_ONLY | NONE | CHANT | QUERY | CORRECT | LOT
-bid_kind: str                   # authoritative enum (see 03-nlu-spec.md)
+bid_kind: str                   # authoritative enum (see 03-nlu-spec.md §5.1)
 numbers_found: list[float]
+idioms_found: list[str]
 confidence: float
 latency_ms: float
+reason: str | None              # why NONE: silence | too_short | needs_current_bid | unknown
+closing: bool                   # "e fechando"
+target_value: float | None      # CORRECT with explicit value
+lot: int | None                 # LOT
 trace: dict                     # per-stage debug, only filled when cfg.debug
 ```
 
 Legacy names (`has_addition`, `has_multiplication`, `action_type`, `value`, `currency`,
-`numbers_found`) are preserved so the future Unity client does not inherit two dialects.
+`numbers_found`, `int_value`) are preserved so the future Unity client does not inherit two
+dialects. `bid_kind` is the authoritative field; `action_type` maps onto it 1:1 (see §5.1 of the
+NLU spec).
 
 ### 3.5 `nlu.parser.parse(text, nbest=None) -> BidResult`
 
