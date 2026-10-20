@@ -176,10 +176,33 @@ The demo only reports what was heard and parsed.
 | Metric | Expected on a mid-range CPU |
 |---|---|
 | Server RSS | ~250 MB |
-| Keyup → final | < 150 ms (measured ~40 ms) |
+| Keyup → final | < 150 ms (measured ~40 ms; 10–13 ms max chunk with `small-lm-v1`) |
 | CPU during decode | 2–10 % of one core |
 | VRAM | 0 |
 | Model load (once) | 0.2 s |
 
 This is the core reason for leaving Whisper: no Vulkan, no VRAM contention, no AMD/older-NVIDIA
 driver crashes.
+
+## 11. Model artifacts to ship with the game
+
+| File | Size | Notes |
+|---|---|---|
+| `small-lm-v1/final.mdl` | 13.5 MB | acoustic model, unchanged |
+| `small-lm-v1/HCLr.fst` | 15.5 MB | decoding graph, unchanged |
+| `small-lm-v1/Gr.fst` | 4.1 MB | **rebuilt** language model (base: 16.0 MB) |
+| `small-lm-v1/ivector/*` | 8.5 MB | speaker/CMVN, unchanged |
+| `small-lm-v1/words.txt` | — | symbol table used to build the LM (needed for rebuilds, not runtime) |
+
+Total ~40 MB unpacked. No runtime dependency beyond `libvosk` and the model directory.
+
+## 12. What NOT to port
+
+- The `nbest` parser-scoring heuristic: it exists to compensate for Vosk's unreliable confidence
+  ranking during tuning. The game should consume `bid_kind` + `value` and ignore `nbest` unless
+  building a debug overlay.
+- Phonetic repair: it belongs to the Python NLU. If the parser is ported to C#, the repair tables
+  must be ported with it, not re-invented.
+- Runtime grammar: it is a server-side ASR concern. Unity sends raw PCM and receives text; it never
+  builds or sends a grammar.
+

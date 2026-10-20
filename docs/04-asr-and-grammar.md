@@ -4,16 +4,18 @@
 
 | Model | Size (zip / unpacked) | Load | RSS | Grammar support | Role |
 |---|---|---|---|---|---|
-| `vosk-model-small-pt-0.3` | 31 MB / 53 MB | 0.19–0.28 s | 145 MB | **yes** (dynamic `HCLr.fst` + `Gr.fst`) | **default** |
+| `vosk-model-small-pt-0.3` | 31 MB / 53 MB | 0.19–0.28 s | 145 MB | **yes** (dynamic `HCLr.fst` + `Gr.fst`) | base |
+| `small-lm-v1` (rebuilt `Gr.fst`) | 31 MB / 40 MB | 0.16–0.18 s | 145 MB | **yes** | **default** |
 | `vosk-model-pt-fb-v0.1.1-pruned` | 1.1 GB / 1.7 GB | 1.1–5.8 s | 1.84 GB | **no** (static `HCLG.fst`, silently ignored) | optional accuracy mode |
 | `vosk-model-pt-fb-v0.1.1-20220516_2113` | 1.6 GB / ~2.4 GB | ~6 s | >2.4 GB | no | not shipped |
 
-Rationale: the demo must run beside a browser on 16 GB total. `small` + grammar beats `pruned`
-on latency by ~4× and uses 12× less memory, while `pruned`'s accuracy advantage (34–36/40 vs
-29/40 on TTS) is not worth losing grammar restriction — and `pruned` cannot use grammar at all.
+Rationale: the demo must run beside a browser on 16 GB total. `small` + rebuilt LM + grammar beats
+`pruned` on latency by ~4×, uses 12× less memory, and (measured) **beats it on accuracy**:
+37–38/40 versus 34–36/40. `pruned` also cannot use grammar at all.
 
 **Verification at startup:** `HCLr.fst` and `Gr.fst` must exist in the model directory for grammar
 mode. If missing, `--grammar` is downgraded to `off` with a warning (never silently).
+
 
 Model download: `tools/fetch_models.py` (see §7). Models are gitignored.
 
@@ -56,6 +58,24 @@ Priority when trimming to 15 000: intents/idioms (never trimmed) → numbers ≤
 currency frames → spelled digits. Trimming is deterministic (sorted) and reported.
 
 Measured sizes: 14 202 phrases / 494 KB / 22 ms build. Accuracy does not improve above this.
+
+**Numbers are mandatory.** An intent-only grammar (103 phrases) scored **18/40** on the 40-case
+suite, because the grammar replaces the LM entirely rather than biasing it: `quarenta e sete` →
+empty, `duzentos e cinquenta mil` → `cinquenta mil`. Any grammar must therefore contain the number
+phrases, even when the model's LM has been rebuilt with numbers.
+
+**With a rebuilt LM, grammar is optional.** Measured:
+
+| Config | value |
+|---|---|
+| base model + curated grammar (2 379) | 37/40 |
+| LM rebuilt, plain | 37–38/40 |
+| LM rebuilt + curated grammar (2 379) | 37/40 |
+| LM rebuilt + full number grammar (33 120) | 36/40 |
+| LM rebuilt + intent-only grammar (103) | 18/40 |
+
+Default in the demo: **LM rebuilt + curated grammar** (keeps OOD rejection, no accuracy loss).
+
 
 ### 2.3 Validation report
 

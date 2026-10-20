@@ -26,6 +26,8 @@ Deliverables:
 
 - `asr/audio.py`, `asr/base.py`, `asr/vosk_engine.py`.
 - `nlu/grammar.py` (phrase builder + validator + budget).
+- `tools/build_lm_corpus.py`, `tools/build_graph.py`, `tools/bootstrap_kaldi.sh`.
+- `models/small-lm-v1/` (LM rebuilt from the first corpus) with `manifest.json`.
 - `server/app.py`, `templates/index.html`, `static/app.js`, `static/style.css`.
 - `/health`, `/stream`, `/transcribe`.
 - stdout report block.
@@ -34,9 +36,13 @@ Acceptance:
 
 - Hold Space → partial text appears; release → final block in stdout and textarea in < 150 ms.
 - "Copiar tudo" copies the full textarea.
-- Grammar status visible in UI (`14 202 phrases` or `off`).
+- Grammar status visible in UI (`N phrases` or `off`), and model badge distinguishes
+  `small` vs `small-lm-v1`.
 - `/transcribe` with a WAV fixture returns the same JSON shape as WS.
 - Engine smoke test passes with `models/small` present, skips cleanly otherwise.
+- `small-lm-v1` beats base `small` by ≥ 5 points value accuracy on the 40-case suite
+  (prototype achieved +10).
+
 
 ### P2 — NLU (1 day)
 
@@ -67,27 +73,24 @@ Acceptance:
 - Report states model, grammar size, corpus hash, provenance.
 - Baseline numbers within ±3 points of the measured §4.9 values.
 
-### P4 — LM rebuild (1–2 days)
+### P4 — Corpus iteration + second LM (1 day, optional)
 
 Deliverables:
 
-- `tools/build_lm_corpus.py`, `tools/build_graph.py`, `tools/bootstrap_kaldi.sh`.
-- `models/small-lm-v1/` with `manifest.json`.
-- `data/reports/lm-v1.md` with A/B.
+- Corpus v2 targeting the residual failures (long compounds, chained `mais`, bare `dobro`).
+- `models/small-lm-v2/` + A/B report against `small-lm-v1`.
 
 Acceptance:
 
-- `small-lm-v1` improves slot accuracy by ≥ 3 points absolute on the same corpus.
-- 40-case text suite unchanged (40/40).
-- No latency regression (RTF ≤ 0.05 with grammar).
-- If it fails, the report documents the negative result and the model is not adopted.
+- ≥ 39/40 value accuracy on the 40-case suite, or a documented negative result.
 
 ### P5 — Optional (as needed)
 
-- `tools/build_lexicon.py` for OOV idioms (`small-lm-v2`).
+- `tools/build_lexicon.py` for OOV idioms (`small-lm-v3`).
 - Pruned "accuracy mode" wiring (`--model pruned`, grammar auto-disabled with warning).
 - Spelled-digit mode (`cinco zero` → 50) end-to-end.
 - `--replay` CLI mode: feed a WAV through the exact WS pipeline for debugging.
+
 
 ## 2. Definition of done for the demo (P0–P3)
 
@@ -123,14 +126,16 @@ The demo is done when, on a machine with only `uv` and `ffmpeg`:
 | Phase | Effort | Depends on |
 |---|---|---|
 | P0 | 0.5 d | — |
-| P1 | 1 d | P0 |
+| P1 | 1.5 d | P0 |
 | P2 | 1 d | P0 |
 | P3 | 1 d | P1, P2 |
-| P4 | 1–2 d | P3 |
+| P4 | 1 d | P3 |
 | P5 | as needed | P4 |
 
-Total to a complete demo with baseline report: **3.5 days of work**, then 1–2 days for the first
-adapted model.
+Total to a complete demo with the LM-rebuilt model and baseline report: **4 days of work**.
+The LM rebuild is no longer a separate research phase — it is part of P1 and already proven to
+deliver ~+10 points of value accuracy and an 8× decode speedup.
+
 
 ## 5. Explicitly out of scope
 

@@ -10,6 +10,11 @@ This folder is the written plan that the implementation will follow. Nothing her
 authoritative over measured behavior: every number below was produced on this machine on
 2026-10-19/20 and is reproducible with the commands in `08-measurements-appendix.md`.
 
+> **Planning spike outcome:** the Vosk LM-rebuild pipeline was built and executed during planning
+> (openfst 1.8.4 + opengrm 1.3.17), and a rebuilt `Gr.fst` moved the suite from **26–28/40 to
+> 37–38/40** value accuracy while making decoding **~8× faster**. That changes the roadmap: the LM
+> rebuild is part of P1, not a later research phase. Details in `01` §5 and `08` §15.
+
 ## Documents
 
 | File | Purpose |
@@ -26,14 +31,14 @@ authoritative over measured behavior: every number below was produced on this ma
 
 ## One-paragraph summary
 
-Replace the Whisper-on-GPU pipeline with **Vosk + `vosk-model-small-pt-0.3` (31 MB, CPU only)**
-and a **runtime phrase grammar** limited to auction vocabulary. Measured: 145 MB RSS, 0.2 s load,
-RTF 0.02, 9 ms max chunk latency with grammar — versus 150–250 ms spikes plain, and versus
-1.8 GB RSS for the `pruned` model (which additionally **ignores** runtime grammar). The NLU layer
+Replace the Whisper-on-GPU pipeline with **Vosk + `vosk-model-small-pt-0.3` (31 MB, CPU only)**,
+a **rebuilt `Gr.fst` language model** trained on auction speech, and a **runtime phrase grammar**
+limited to auction vocabulary. Measured: 145 MB RSS, 0.18 s load, RTF 0.026, 10–13 ms max chunk
+latency, and **37–38/40** value accuracy on the 40-case suite (base model: 26–28/40). The NLU layer
 is ported from `vosk-python/src/vosk_python/evaluator.py` (the only implementation that scores
-40/40 on the text-level suite) and extended with an explicit intent layer, correction handling,
-idioms and OOV fallbacks. Fine-tuning is staged after the demo baseline: LM rebuild first
-(Kaldi/openfst/opengrm), lexicon/graph second, acoustic last (not viable on `small`).
+40/40 at text level) and extended with an explicit intent layer, correction handling, idioms and
+OOV fallbacks. Fine-tuning is staged inside the demo work: LM rebuild first (proven, `05`),
+lexicon/graph second, acoustic last (not viable on `small`).
 
 ## Non-goals (explicit)
 
@@ -41,3 +46,18 @@ idioms and OOV fallbacks. Fine-tuning is staged after the demo baseline: LM rebu
 - No GPU/Vulkan dependency at runtime.
 - No acoustic fine-tune of `vosk-model-small-pt-0.3` (no published recipe; see `05-finetuning-plan.md`).
 - No human-recorded corpus yet — TTS corpus only, schema kept human-ready.
+- No lexicon/graph rebuild in P1 (only LM rebuild). Level 2 stays optional (P5).
+
+## Measured headline numbers (TL;DR)
+
+| | base `small` | `small-lm-v1` |
+|---|---|---|
+| Value accuracy (40 cases, TTS) | 26–28/40 | **37–38/40** |
+| `has_addition` / `has_multiplication` | 40/40 / 38/40 | 40/40 / 39/40 |
+| RTF (plain) | 0.18–0.30 | **0.026–0.031** |
+| Max chunk latency | 130–205 ms | **10–13 ms** |
+| Load / RSS | 0.20 s / 498 MB | 0.18 s / 498 MB |
+| `Gr.fst` size | 16.0 MB | 4.1 MB |
+
+All audio synthetic (Piper `pt_BR-faber-medium`); these are regression numbers, not field accuracy.
+

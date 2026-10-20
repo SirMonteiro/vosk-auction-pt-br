@@ -147,6 +147,10 @@ No accuracy gain above ~14 k. **Hard cap: 15 000 phrases.** The builder must ref
 
 The demo pads the utterance and the browser keeps a 250 ms pre-roll ring buffer.
 
+> Note: these runs used the *legacy* curated grammar and the unmodified model. With the rebuilt LM
+> (`01` §5) the same suite reaches 37–38/40 and padding matters less, but it stays in the pipeline
+> because it is free and protects the first syllable on real mics.
+
 ### 4.7 Confidence and n-best
 
 `SetWords(True)` + `SetMaxAlternatives(n)` work and return word timings/confidences, but the
@@ -184,7 +188,57 @@ Recurring ASR failures with `small`: `dobro de cinquenta` → `cinquenta`, `duas
 `meia dúzia` → `doze`, `um milhão` → `um`, `cem mil` → `mil`, `trinta e cinco mil` → `cinco mil`,
 `mais vinte mais vinte mais sete` → loses a `mais`, `dobro` alone → empty.
 
-## 5. What is reusable, what is rewritten
+## 5. LM rebuild is proven on this machine (new, 2026-10-20)
+
+The full Vosk "level 1" pipeline was executed end-to-end during planning, not just planned:
+
+```
+farcompilestrings --fst_type=compact --symbols=words.txt --keep_symbols text.txt \
+  | ngramcount --order=3 \
+  | ngrammake --method=kneser_ney \
+  | fstconvert --fst_type=ngram > Gr.fst
+```
+
+Toolchain that actually compiles here: **openfst 1.8.4** + **opengrm-ngram 1.3.17**, both built
+from source with `-std=c++17` (openfst 1.8.3 and opengrm 1.3.4/1.3.7 both fail on GCC 16).
+
+Measured effect on the 40-case suite (TTS, padded, `vosk_python` evaluator):
+
+| Model | value | add | mult | RTF | load | RSS |
+|---|---|---|---|---|---|---|
+| `small` base | 26–28/40 | 40/40 | 38/40 | 0.18–0.30 | 0.20 s | 498 MB |
+| `small` + rebuilt `Gr.fst` | **37–38/40** | 40/40 | 39/40 | **0.026–0.031** | 0.18 s | 498 MB |
+
+The rebuilt `Gr.fst` is 4.1 MB versus 16.0 MB in the base model, decoding is **~8× faster**, and
+the model still honours runtime grammar restriction (verified with `["um","dois"]` → `[unk]`).
+
+Two findings that constrain the design:
+
+1. **The grammar must contain numbers.** An intent-only grammar (103 phrases, intents + currency
+   words, relying on the LM for numbers) collapses to **18/40** — `quarenta e sete` → empty,
+   `duzentos e cinquenta mil` → `cinquenta mil`. Grammar and numbers are inseparable.
+2. **Corpus words must exist in the model vocabulary.** `farcompilestrings` hard-fails on any
+   token absent from `words.txt`; the corpus builder must filter against the symbol table and
+   report the dropped set (`barrigudas`, `bujões`, `goiás`, `guará`, `oitão`, `xuxa`, `dou-lhe`).
+
+Best observed combinations:
+
+| Config | value | Notes |
+|---|---|---|
+| base + curated grammar (~2.4 k) | 37/40 | best without touching the model |
+| LM rebuilt, plain | 37–38/40 | best overall, simplest runtime |
+| LM rebuilt + curated grammar | 37/40 | no gain over LM plain |
+| LM rebuilt + intent-only grammar | 18/40 | **anti-pattern** |
+
+Conclusion: with the LM rebuilt, runtime grammar becomes optional (useful for OOD rejection, not
+for accuracy). Without it, grammar is essential. The demo ships both paths and defaults to
+LM + curated grammar.
+
+Remaining LM failures (targets for the next corpus iteration): `nove mil novecentos e noventa e
+nove` → `noventa mil e novecentos e noventa e nove` (long compound numbers under-represented),
+`mais dez mais dez` → `mais três mais dez` (chained repetition), `dobro` alone → empty/`subo`.
+
+## 6. What is reusable, what is rewritten
 
 | Component | Decision |
 |---|---|

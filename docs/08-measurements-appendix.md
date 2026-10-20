@@ -146,7 +146,8 @@ Accuracy did not improve from 14 k → 842 k (31/40 both). RTF at 842 k: 0.93.
 | pruned | 1.0 | 35/40 | 34/40 | n/a | n/a |
 | pruned | 0.8 | 32/40 | 32/40 | n/a | n/a |
 
-Padding = 300 ms leading + 400 ms trailing zeros.
+Padding = 300 ms leading + 400 ms trailing zeros. These are base-model runs with the legacy
+curated grammar; the LM-rebuilt model is measured in §15.
 
 ## 7. Accuracy, 40-case suite
 
@@ -273,7 +274,7 @@ unaccented variants that Vosk ignores.
 | `lobo guará` | `agora` |
 | `um milhão` | `` / `união` |
 
-These are the concrete targets of the LM rebuild (P4) and the NLU fallbacks (P2).
+These are the concrete targets of the LM rebuild (P1) and the NLU fallbacks (P2).
 
 ## 13. Legacy parser behavior (context for the rewrite)
 
@@ -305,7 +306,68 @@ uv run python -m tools.bench_matrix \
     --out data/reports/matrix.md
 ```
 
-## 15. Notes on validity
+## 15. LM rebuild prototype (2026-10-20)
+
+### 15.1 Toolchain
+
+| Item | Version | Result |
+|---|---|---|
+| openfst | 1.8.3 | **fails** on GCC 16 (`FstImpl::operator=`, `std::unique_ptr`) |
+| openfst | 1.7.9 | **fails** on GCC 16 |
+| openfst | **1.8.4** | **builds**, `--enable-far --enable-ngram-fsts`, `-std=c++17` |
+| opengrm-ngram | 1.3.4 | **fails** (`-std=c++11`, `FLAGS_*` vs `FST_FLAGS_*`) |
+| opengrm-ngram | 1.3.7 | **fails** (same) |
+| opengrm-ngram | **1.3.17** | **builds** with `CPPFLAGS=-I<openfst>/include` |
+
+Install size: 42 MB (openfst) + 110 MB (opengrm build tree).
+
+### 15.2 Corpus
+
+| Metric | Value |
+|---|---|
+| Lines | 426 420 |
+| Tokens | 4 591 812 |
+| Sources | number frames (0–999, `N mil`, `N mil e M`), 54 idioms ×60, 53 intents ×60, 20 k chained bids |
+| OOV dropped | 540 lines; tokens: `barrigudas`, `bujões`, `dou-lhe`, `goiás`, `guará`, `oitão`, `xuxa` |
+| Build time | 1.7 s (whole pipeline) |
+
+### 15.3 Result
+
+| Model | value | add | mult | RTF | max chunk | load | RSS |
+|---|---|---|---|---|---|---|---|
+| base `small` | 26–28/40 | 40/40 | 38/40 | 0.18–0.30 | 130–205 ms | 0.20 s | 498 MB |
+| `small` + new `Gr.fst` | **37–38/40** | 40/40 | 39/40 | **0.026–0.031** | **10–13 ms** | 0.18 s | 498 MB |
+
+`Gr.fst`: 4 133 967 bytes (base: 16 007 119), 775 states, 4 189 arcs, ngram type.
+
+Runtime grammar still restricts on the rebuilt model (`["um","dois"]` + `cinquenta reais` → `cem`,
+i.e. forced into the allowed vocabulary).
+
+### 15.4 Grammar interaction (important)
+
+| Config | value |
+|---|---|
+| base + curated grammar (2 379 phrases) | 37/40 |
+| LM rebuilt, plain | 37–38/40 |
+| LM rebuilt + curated grammar (2 379) | 37/40 |
+| LM rebuilt + intent-only grammar (103) | **18/40** |
+| LM rebuilt + full number grammar (33 120) | 36/40 |
+
+An intent-only grammar **breaks numbers**, because the grammar replaces the LM entirely. Numbers
+must always be in the grammar if a grammar is used. With the LM rebuilt, grammar is optional.
+
+### 15.5 Residual failures after LM rebuild
+
+| Spoken | Decoded |
+|---|---|
+| `nove mil novecentos e noventa e nove` | `noventa mil e novecentos e noventa e nove` |
+| `mais dez mais dez` | `mais três mais dez` |
+| `dobro` | `` / `subo` |
+
+These become the next corpus iteration's targets (long compounds, chained repetition, bare
+multiplier).
+
+## 16. Notes on validity
 
 - All audio in §5–§12 is **synthetic** (Piper `pt_BR-faber-medium`), not human. It measures relative
   behavior (model A vs B, grammar on vs off, padding, speed), not absolute field accuracy.

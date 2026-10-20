@@ -17,6 +17,11 @@
 | D-11 | No VAD, no continuous listening | PTT gives exact boundaries; VAD adds latency and failure modes |
 | D-12 | n-best scored by the parser, not by Vosk confidence | Vosk ranked `"mas vindo de"` above `"mais vinte"` |
 | D-13 | No Unity artifacts | Explicit user constraint for this phase |
+| D-14 | **LM rebuild moves into P1, not a later research phase** | Proven on this machine: 26–28 → 37–38 / 40 value accuracy and 8× faster decode. It is the highest-leverage change and no longer speculative |
+| D-15 | Grammar is **optional** once the LM is rebuilt | Measured: LM plain 37–38/40, LM + grammar 37/40. Grammar stays for OOD rejection, not accuracy |
+| D-16 | Any grammar must contain numbers | Intent-only grammar scored 18/40 — the grammar replaces the LM rather than biasing it |
+| D-17 | Toolchain pinned: openfst 1.8.4 + opengrm 1.3.17, `-std=c++17` | Every older combination fails on GCC 16 |
+| D-18 | LM corpus filtered against the model symbol table | `farcompilestrings` aborts on any OOV token; 540/426 420 lines dropped in the prototype |
 
 ## 2. Open questions
 
@@ -39,13 +44,15 @@
 | R-3 | `pruned` used with grammar by mistake | Medium | Medium | Startup check for `HCLr.fst`; warning in UI and logs |
 | R-4 | Phonetic repair creates false positives | High | High | Rewrite with class restriction, margin, stoplist; regression tests |
 | R-5 | `conto`/`pau`/`barão` semantics differ from the game's fiction | Medium | Medium | D-8 + Q-2; single table to change |
-| R-6 | openfst/Kaldi build fails on GCC 16 | High | Medium | conda-forge openfst 1.8.4 or pinned compiler; documented in `05` |
+| R-6 | openfst/Kaldi build fails on GCC 16 | **Resolved** | Medium | openfst 1.8.4 + opengrm 1.3.17 verified; pinned in `05` |
 | R-7 | Disk pressure (models + corpus + toolchain) | Low | Medium | 37 GB free; `pruned` optional; corpus capped at 5 000 clips |
 | R-8 | Browser AudioWorklet unavailable / mic permission denied | Low | Medium | ScriptProcessor fallback + clear UI error |
 | R-9 | First syllable clipped by Vosk | Medium | Medium | 250 ms pre-roll + 300 ms lead silence (measured gain) |
 | R-10 | Partial parsing shows wrong intermediate values | High | Low | Partials displayed raw; parser only on final |
 | R-11 | Scope creep into Unity | Medium | High | D-13; `unity-handoff.md` is documentation only |
 | R-12 | `small` model cannot pronounce some idioms at all | Certain | Medium | NLU fallbacks (`três oitão` → 38), grammar OOV report, LM/lexicon phase |
+| R-13 | LM rebuild overfits a small corpus | **Observed** | High | A 19-line prototype corpus *dropped* accuracy 29→22. Minimum corpus ~400 k lines / 4 M tokens; always A/B against the base model |
+| R-14 | Intent-only grammar destroys numbers | **Observed** | High | 18/40 when numbers are omitted; grammar must always include the number set |
 
 ## 4. Assumptions
 
@@ -63,4 +70,4 @@
 | The game needs continuous listening | Add a VAD-based mode; revisit padding and endpointing |
 | Unity needs the parser in C# | Port `nlu/` first; keep the Python demo as the reference implementation |
 | 16 GB proves too tight with pruned | Drop pruned entirely; `small` + grammar is the shipping path |
-| Human corpus becomes available | Re-run P3 with `provenance="human"` and re-baseline before P4 |
+| Human corpus becomes available | Re-run P3 with `provenance="human"` and re-baseline before the next LM iteration |

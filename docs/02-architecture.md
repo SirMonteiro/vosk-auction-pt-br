@@ -217,7 +217,7 @@ WS protocol:
 
 Sections:
 
-1. **Header** — model badge, grammar badge (`14 202 phrases`, or `off`), status pill.
+1. **Header** — model badge, grammar badge (`2 379 phrases`, or `off`), status pill.
 2. **Push-to-talk zone** — hold Space (or hold the button for accessibility), timer, live partial.
 3. **Result card** — `value`, `currency`, `bid_kind`, three boolean pills (`has_addition`,
    `has_sum`, `has_multiplication`), confidence, latency.
@@ -239,7 +239,7 @@ Exactly one block per finalized utterance:
 ============================================================
 🏛️  AUCTION BID
 ------------------------------------------------------------
-model            vosk-model-small-pt-0.3  (grammar: 14202)
+model            small-lm-v1  (grammar: 2379)
 raw              "mais vinte mais vinte mais sete"
 normalized       " + vinte + vinte + sete"
 nbest            1) 47.00  mais vinte mais vinte mais sete  ← chosen
@@ -248,7 +248,7 @@ value            47.00   (R$ 47,00)
 has_addition     True
 has_sum          True
 has_multiplication False
-action           BID / BID_INCREMENT
+action           BID / BID_DELTA
 confidence       0.82
 latency          38 ms
 ============================================================

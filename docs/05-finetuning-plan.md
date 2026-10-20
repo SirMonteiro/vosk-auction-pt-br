@@ -23,49 +23,70 @@ the vocabulary** (level 1 only re-weights existing words; level 2 adds words). L
 
 ### 2.1 Prerequisites
 
-Kaldi's `tools` (openfst + opengrm). Constraints measured on this machine:
+Kaldi's `tools` (openfst + opengrm). **Verified working on this machine on 2026-10-20** — the
+pipeline below was executed, not just planned:
+
+| Component | Version that works | Why |
+|---|---|---|
+| openfst | **1.8.4** | 1.8.3 and 1.7.9 fail on GCC 16 (`std::unique_ptr` in `FstImpl::operator=`) |
+| opengrm-ngram | **1.3.17** | 1.3.4/1.3.7 ship `-std=c++11` and use `FLAGS_*` instead of `FST_FLAGS_*`; both fail |
+| build flags | `CXXFLAGS="-O2 -std=c++17"`, `CPPFLAGS="-I<openfst>/include"`, `LDFLAGS="-L<openfst>/lib"` | opengrm's configure cannot find `fst/fst.h` otherwise |
+
+Constraints measured:
 
 - No usable Docker/Podman → no container build.
-- `/tmp` is tmpfs (7.8 GB) and not persistent → build in the project disk, not `/tmp`.
-- System compilers are GCC 16, which **fails** on openfst 1.8.3 (`std::unique_ptr` incompatibility).
-  Options, in order of preference:
-  1. `conda-forge` `openfst` package (1.8.4 exists for `linux-64`) via a minimal micromamba
-     bootstrap into `.toolchain/` (no root).
-  2. Build openfst 1.8.4 (not 1.8.3) with `-std=c++17`; if it still fails, use a pinned older GCC.
-  3. `pynini` wheels ship a working openfst runtime but **no CLI tools** — not sufficient alone.
-- Disk: ~2 GB for the toolchain, ~3 GB scratch per rebuild.
+- `/tmp` is tmpfs (7.8 GB) and not persistent → build in `.toolchain/` on the project disk.
+- Disk: 42 MB (openfst install) + 110 MB (opengrm build tree) ≈ 200 MB, not 2 GB.
+- `conda-forge` openfst exists (1.8.4) but opengrm is **not** packaged; the source build is required.
+- Build time: ~3 min openfst, ~4 min opengrm on 12 threads.
 
-### 2.2 Steps
+`tools/bootstrap_kaldi.sh` will pin these exact versions and flags.
+
+### 2.2 Steps (executed successfully)
 
 ```bash
-# 1. corpus
-uv run python -m tools.build_lm_corpus \
-    --out data/lm/text.txt \
-    --seed 20261020
+# 0. toolchain (once)
+curl -sL -o openfst.tar.gz https://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.8.4.tar.gz
+tar xzf openfst.tar.gz && cd openfst-1.8.4
+./configure --prefix=$PWD/../inst --enable-far --enable-ngram-fsts CXXFLAGS="-O2 -std=c++17"
+make -j12 && make install
+
+curl -sL -o ngram.tar.gz https://www.opengrm.org/twiki/pub/GRM/NGramDownload/ngram-1.3.17.tar.gz
+tar xzf ngram.tar.gz && cd ngram-1.3.17
+CXXFLAGS="-O2 -std=c++17" CPPFLAGS="-I../inst/include" LDFLAGS="-L../inst/lib" \
+  ./configure --prefix=$PWD/../inst
+make -j12 && make install
+
+export PATH=$PWD/../inst/bin:$PATH
+export LD_LIBRARY_PATH=$PWD/../inst/lib:$PWD/../inst/lib/fst
+
+# 1. corpus (filtered against the model vocabulary)
+uv run python -m tools.build_lm_corpus --out data/lm/text.txt --seed 20261020 \
+    --filter-against models/small/Gr.fst
 
 # 2. grammar
-export KALDI_ROOT=.toolchain/kaldi
-export PATH=$KALDI_ROOT/tools/openfst/bin:$PATH
-export LD_LIBRARY_PATH=$KALDI_ROOT/tools/openfst/lib/fst
-
-MODEL=models/small-base            # untouched copy
+MODEL=models/small-lm-v1
 cp -r models/small $MODEL
+fstsymbols --save_osymbols=data/lm/words.txt models/small/Gr.fst > /dev/null
 
-fstsymbols --save_osymbols=words.txt $MODEL/Gr.fst > /dev/null
-farcompilestrings --fst_type=compact --symbols=words.txt --keep_symbols \
+farcompilestrings --fst_type=compact --symbols=data/lm/words.txt --keep_symbols \
     data/lm/text.txt \
   | ngramcount --order=3 \
   | ngrammake --method=kneser_ney \
-  | fstconvert --fst_type=ngram > $MODEL/Gr.new.fst
-mv $MODEL/Gr.new.fst $MODEL/Gr.fst
+  | fstconvert --fst_type=ngram > $MODEL/Gr.fst
 
 # 3. manifest + regression
 uv run python -m tools.eval --model $MODEL --corpus data/corpus/tts.jsonl \
     --report data/reports/lm-v1.md
 ```
 
-`tools/build_graph.py` wraps this with: model copy, backup of the original `Gr.fst`, corpus hash,
-n-gram order, `--dry-run`, and a `manifest.json` update.
+Measured run: 426 k lines / 4.6 M tokens → 1.7 s build → `Gr.fst` 4.1 MB (base: 16.0 MB).
+
+**Hard requirement discovered:** every token in the corpus must exist in the model's
+`words.txt`/symbol table. `farcompilestrings` aborts on the first unknown token. The corpus
+builder must filter and report (measured OOV set: `barrigudas`, `bujões`, `goiás`, `guará`,
+`oitão`, `xuxa`, `dou-lhe`).
+
 
 ### 2.3 What goes into the LM corpus
 
@@ -89,8 +110,18 @@ grammar, but with different caps (grammar = 15 k phrases; LM = full).
 - WER on the TTS corpus does not regress.
 - Slot accuracy (value + add + mult + action) improves by ≥ 3 points absolute over baseline.
 - The 40-case text suite stays 40/40.
-- Latency unchanged (RTF ≤ 0.05 with grammar).
+- Latency unchanged or better (measured: RTF 0.22 → 0.026, **8× faster**).
 - If it does not improve, the report says so and the model is **not** adopted. No cherry-picking.
+
+### 2.5 Measured prototype result (planning spike)
+
+A prototype corpus (426 k lines, 4.6 M tokens, weighted templates) rebuilt into a 4.1 MB `Gr.fst`
+moved the suite from **26–28/40 to 37–38/40** value accuracy, with `add` 40/40 and `mult` 39/40,
+and reduced RTF from 0.18–0.30 to 0.026–0.031. See `01-context-and-findings.md` §5 and
+`08-measurements-appendix.md` §16.
+
+This is evidence that the LM rebuild is worth doing in P1, and that the expected gain is ~10 points, not ~3.
+
 
 ## 3. Level 2 — Lexicon and graph rebuild
 
@@ -204,13 +235,16 @@ speed    = 1.0, 0.8, 0.65
 and writes one table. This productizes the ad-hoc matrix that produced §4.9 of
 `01-context-and-findings.md`.
 
-## 7. Order of work (after the demo)
+## 7. Order of work (revised after the spike)
 
-1. `build_lm_corpus.py` + `tts_corpus.py` + `eval.py` → baseline report (`small`, grammar on/off).
-2. Toolchain bootstrap (`tools/bootstrap_kaldi.sh`, documented, not auto-run).
-3. `build_graph.py` → `small-lm-v1`; A/B report.
-4. Only if needed: `build_lexicon.py` → `small-lm-v2` with OOV idioms.
-5. Optional: pruned evaluation as an accuracy ceiling reference.
+The spike proved the LM rebuild works, so it is no longer "after the demo":
+
+1. `tools/bootstrap_kaldi.sh` (openfst 1.8.4 + opengrm 1.3.17, pinned) — **P1**.
+2. `build_lm_corpus.py` + `build_graph.py` → `small-lm-v1`; A/B report — **P1**.
+3. `tts_corpus.py` + `eval.py` → baseline + matrix report — **P3**.
+4. Corpus v2 targeting residual failures → `small-lm-v2` — **P4**.
+5. Only if needed: `build_lexicon.py` → `small-lm-v3` with OOV idioms — **P5**.
+6. Optional: pruned evaluation as an accuracy ceiling reference — **P5**.
 
 ## 8. Reproducibility rules
 

@@ -157,6 +157,11 @@ Detection order is fixed; the first match wins.
 | `action_type` | `BID` \| `PASS` \| `MULTIPLY_ONLY` \| `NONE` \| `CHANT` \| `QUERY` \| `CORRECT` \| `LOT` |
 | `bid_kind` | `BID_ABSOLUTE` \| `BID_DELTA` \| `BID_SUM` \| `BID_MULTIPLY` \| `MULTIPLY_ONLY` \| `PASS` \| `CORRECT` \| `QUERY` \| `CHANT` \| `LOT` \| `UNKNOWN` |
 
+`action_type` is the legacy four-value vocabulary extended with the new intents; `bid_kind` is the
+authoritative, finer-grained enum. Both are always present and always consistent
+(`BID_DELTA`/`BID_SUM`/`BID_ABSOLUTE`/`BID_MULTIPLY` → `BID`; everything else maps 1:1).
+
+
 ### 5.2 Rules
 
 1. **Single number, no leading marker** → absolute. `cinquenta` → 50, `value_mode=absolute`.
@@ -174,22 +179,24 @@ Detection order is fixed; the first match wins.
 
 ### 5.3 Reference cases (must stay green)
 
-| Utterance | value | has_addition | has_multiplication | action_type |
-|---|---|---|---|---|
-| `mais vinte` | 20 | True | False | BID |
-| `vinte mais vinte` | 40 | False | False | BID |
-| `mais vinte mais vinte mais sete` | 47 | True | False | BID |
-| `mais dez mais dez` | 20 | True | False | BID |
-| `cinquenta, cinquenta, cinquenta` | 50 | False | False | BID |
-| `50, 40, 20` | 20 | False | False | BID |
-| `dobro` | 2 | False | True | MULTIPLY_ONLY |
-| `dobro de cinquenta` | 100 | False | True | BID |
-| `triplo de cinquenta` | 150 | False | True | BID |
-| `metade de cem` | 50 | False | True | BID |
-| `passo` / `tô fora` | 0 | False | False | PASS |
-| `errei` | 0 | False | False | CORRECT |
-| `dou-lhe uma` | 0 | False | False | CHANT |
-| `lote três` | 0 | False | False | LOT |
+| Utterance | value | has_addition | has_multiplication | action_type | bid_kind |
+|---|---|---|---|---|---|
+| `mais vinte` | 20 | True | False | BID | BID_DELTA |
+| `vinte mais vinte` | 40 | False | False | BID | BID_SUM |
+| `mais vinte mais vinte mais sete` | 47 | True | False | BID | BID_DELTA |
+| `mais dez mais dez` | 20 | True | False | BID | BID_DELTA |
+| `cinquenta, cinquenta, cinquenta` | 50 | False | False | BID | BID_ABSOLUTE |
+| `50, 40, 20` | 20 | False | False | BID | BID_ABSOLUTE |
+| `dobro` | 2 | False | True | MULTIPLY_ONLY | MULTIPLY_ONLY |
+| `dobro de cinquenta` | 100 | False | True | BID | BID_MULTIPLY |
+| `triplo de cinquenta` | 150 | False | True | BID | BID_MULTIPLY |
+| `metade de cem` | 50 | False | True | BID | BID_MULTIPLY |
+| `passo` / `tô fora` | 0 | False | False | PASS | PASS |
+| `errei` | 0 | False | False | CORRECT | CORRECT |
+| `dou-lhe uma` | 0 | False | False | CHANT | CHANT |
+| `lote três` | 0 | False | False | LOT | LOT |
+
+This table is the single source for `tests/fixtures/text_cases.jsonl`.
 
 ## 6. Acronyms and abbreviations
 
