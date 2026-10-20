@@ -11,7 +11,9 @@
 | D-5 | Default model = `vosk-model-small-pt-0.3` | 145 MB RSS, grammar works, 0.2 s load, CPU-only |
 | D-6 | `pruned` = opt-in only | 1.8 GB RSS, and **it ignores runtime grammar** (measured) |
 | D-7 | Grammar = phrase list, accented, **curated ~2.4 k by default**, hard cap 15 000 | Measured: word lists truncate; accents required; curated 2 379 scores the same as 14 202; above 15 k latency collapses without accuracy gain |
-| D-8 | `conto` = Money value | Correct Brazilian usage; the old code treated `cem conto` as R$ 100, which is right. Need to make sure `conto` is a money measurement in any context, like `10 conto` as R$ 10 |
+| D-8 | `conto` = ×1, a synonym of reais (`10 conto` = R$ 10) | Brazilian everyday usage: `100 paus` = R$ 100, `cem conto` = R$ 100. Legacy code already agreed |
+| D-8b | `barão` = ×1000, `pau` = ×1000, `placa` = **×100 000** | User glossary (2026-10-20): barão from the Cruzeiro note, pau for thousands, placa for large sums in the car trade. **`placa` changed from the legacy ×1000** |
+| D-8c | `pila` and `prata` = ×1 | Everyday synonyms for reais; they close the current number without scaling |
 | D-9 | Parser semantics from `vosk-python`, not `whisper-auction-pt-br` | 40/40 vs 38/40 on the text suite; `whisper` parser drops chained `mais` |
 | D-10 | Phonetic repair rewritten, never applied to intent words | Current code turns `quero`→`zero` and `sem lance`→`cem lance` |
 | D-11 | No VAD, no continuous listening | PTT gives exact boundaries; VAD adds latency and failure modes |
@@ -28,7 +30,7 @@
 | ID | Question | Default if unanswered | Impact |
 |---|---|---|---|
 | Q-1 | Does the game want `value` as an absolute bid or a delta (`mais vinte`)? | Report both: `value` + `value_mode`; game decides | Low — demo reports both |
-| Q-2 | Is `conto` (money value) in your game's fiction, or is it used as "100"? | Money value (D-8) | Medium — maybe changes a test |
+| Q-2 | Is `conto` (money value) in your game's fiction, or is it used as "100"? | Money value (D-8) | Resolved 2026-10-20 |
 | Q-3 | Should `dobro` alone be a valid action (double the current bid) or ignored without a number? | `MULTIPLY_ONLY` with factor, as legacy, specificaly `dobro` is 2x, `triplico` is 3x, and so one | Low |
 | Q-4 | Minimum bid increment enforced by the game? | Demo does not enforce; reports only | Low |
 | Q-5 | Should the demo keep the model dropdown (hot-swap) or fix one model? | Keep dropdown, but `pruned` warns that grammar is off | Low |

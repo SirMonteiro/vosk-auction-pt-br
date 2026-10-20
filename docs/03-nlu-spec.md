@@ -29,7 +29,7 @@ before the number.
 |---|---|
 | `BASES` | 0–19, tens, hundreds, with augmentatives/diminutives (`duzentão`, `cinquentinha`, `milzinho`) |
 | `MULTIPLIERS` | `mil`, `milhão/milhões`, `bilhão/bilhões`, `trilhão` |
-| `MAGNITUDES` | `barão/barões`, `placa/placas`, `pau/paus`, `conto/contos`, `pila/pilas`, `prata/pratas` = ×1 |
+| `MAGNITUDES` | `barão/barões` = ×1000; `pau/paus` = ×1000; `placa/placas` = ×100 000; `conto/contos` = ×1 (money synonym, D-8); `pila/pilas` = ×1; `prata/pratas` = ×1 |
 | `DENOMINATIONS` | fauna banknotes: `beija-flor` 1, `tartaruga` 2, `garça` 5, `arara` 10, `mico`/`mico-leão` 20, `onça`/`onça-pintada`/`oncinha` 50, `garoupa`/`peixe` 100, `lobo`/`lobo-guará`/`lobinho` 200 |
 | `BINGO` | 22 `dois patinhos na lagoa`, 33 `idade de cristo`, 38 `justiça de goiás`/`três oitão`, 44 `quá-quá-quá`/`bico largo`, 45 `fim do primeiro tempo`, 51 `uma boa ideia`/`a cana`, 55 `dois portugueses numa perna só`, 66 `um tapa atrás da orelha`, 69 `um pra cima e outro pra baixo`, 77 `par de machados`, 88 `dois bujões`, 11 `pernas da avó`/`pernas da xuxa`/`dois palitos`, 10 `pau e bola`/`camisa dez`, 18 `uma dúzia e meia`/`maioridade`, 6 `meia dúzia`, 12 `uma dúzia`, 13 `o azarado`/`deu azar`, 15 `a debutante`/`menina bonita`, 24 `rapazinho alegre`/`número feio`, 25 `dia de natal`, 31 `meteu num 31`, 35 `o louco`, 50 `meia telha`/`meio caminho` |
 | `PASS` | `passo`, `tô fora`, `desisto`, `sem lance`, `não quero`, `deixa passar`, `não dou`, `abandono`, `saio`, `na minha vez não` |
@@ -53,7 +53,7 @@ Aliases are stored per entry; the canonical key is the display form. Every table
 | `HUNDRED` | 4 | `cem`, `cento`, `duzentos`…`novecentos` |
 | `MULTIPLIER` | 5 | `mil`, `milhão`, `bilhão` |
 | `DENOMINATION` | 6 | `onça`, `garoupa`, `lobo` |
-| `CURRENCY` | 0 | `reais`, `pila`, `prata`, `centavos` (`conto` and `pau` are `MAGNITUDES`, not currency units) |
+| `CURRENCY` | 0 | `reais`, `real`, `conto`, `pila`, `prata`, `centavos` (`pau` is a `MAGNITUDE` = ×1000, not a currency unit) |
 | `CONNECTOR` | — | `e`, `de`, `com` |
 
 ### 3.2 Chunking
@@ -85,8 +85,8 @@ State: `total`, `current`, `last_magnitude`.
 | `milhão/milhões` | `current = max(current,1) * 1e6`; `total += current`; `current = 0` |
 | `bilhão/bilhões` | ×1e9, same pattern |
 | denomination | `total += max(current,1) * denom`; `current = 0` |
-| magnitude (`barão`, `placa`, `pau`, `conto`) | `total += max(current,1) * factor`; `current = 0` |
-| `pila`, `prata`, `real`, `reais` | close `current` into `total` (factor 1) |
+| magnitude (`barão`, `pau`, `placa`) | `total += max(current,1) * factor`; `current = 0` |
+| `pila`, `prata`, `real`, `reais`, `conto` | close `current` into `total` (factor 1) |
 | `centavos` | `total += current / 100`; `current = 0`; switch to cents mode |
 | `meia/meio` after `e` | `+0.5 × last_magnitude` (or `+0.5` if none) |
 | `meia` alone | `6` (bingo) — documented exception |
@@ -110,7 +110,7 @@ Spelled digits: a chunk of ≥ 2 DIGIT tokens with no `e` and no complex word co
 | `um milhão e meio` | 1 500 000 |
 | `duas onças` / `onça e meia` | 100 / 75 |
 | `meia dúzia` / `uma dúzia` / `dúzia e meia` | 6 / 12 / 18 |
-| `um barão` / `três placas` / `meio pau` | 1000 / 3000 / 500 |
+| `um barão` / `três placas` / `meio pau` | 1000 / 300 000 / 500 |
 | `cinquenta pila` / `cem conto` | 50 / 100 (see D-8) |
 | `cinquenta reais e vinte centavos` | 50.20 |
 | `cinquenta k` / `dois mi` | 50 000 / 2 000 000 (acronyms, see §6) |
