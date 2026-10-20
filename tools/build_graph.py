@@ -161,7 +161,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="small-lm-v1", help="destination model name")
     parser.add_argument("--corpus", default="data/lm/text.txt", help="LM corpus")
     parser.add_argument("--order", type=int, default=3, help="n-gram order")
-    parser.add_argument("--dry-run", action="store_true", help="build the FST but do not install it")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="build the FST but do not install it"
+    )
     args = parser.parse_args(argv)
 
     require_toolchain()

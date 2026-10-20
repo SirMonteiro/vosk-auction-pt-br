@@ -135,7 +135,9 @@ def build_lines(seed: int) -> list[str]:
     intents.extend(QUERY_PHRASES)
     intents.extend(CHANT_PHRASES)
     intents.extend(MULTIPLIER_WORDS)
-    intents.extend(f"{word} de {number_to_words(n)}" for word in MULTIPLIER_WORDS for n in (50, 100, 200))
+    intents.extend(
+        f"{word} de {number_to_words(n)}" for word in MULTIPLIER_WORDS for n in (50, 100, 200)
+    )
     intents.extend(list(FRAME_PREFIXES))
     lines.extend(intents)
 

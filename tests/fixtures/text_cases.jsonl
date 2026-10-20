@@ -1,0 +1,50 @@
+{"text": "mais vinte", "value": 20.0, "has_addition": true, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_DELTA"}
+{"text": "vinte mais vinte", "value": 40.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_SUM"}
+{"text": "mais vinte mais vinte mais sete", "value": 47.0, "has_addition": true, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_DELTA"}
+{"text": "mais dez mais dez", "value": 20.0, "has_addition": true, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_DELTA"}
+{"text": "cinquenta, cinquenta, cinquenta", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "50, 40, 20", "value": 20.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "dobro", "value": 2.0, "has_addition": false, "has_multiplication": true, "action_type": "MULTIPLY_ONLY", "bid_kind": "MULTIPLY_ONLY"}
+{"text": "dobro de cinquenta", "value": 100.0, "has_addition": false, "has_multiplication": true, "action_type": "BID", "bid_kind": "BID_MULTIPLY"}
+{"text": "triplo de cinquenta", "value": 150.0, "has_addition": false, "has_multiplication": true, "action_type": "BID", "bid_kind": "BID_MULTIPLY"}
+{"text": "metade de cem", "value": 50.0, "has_addition": false, "has_multiplication": true, "action_type": "BID", "bid_kind": "BID_MULTIPLY"}
+{"text": "passo", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "PASS", "bid_kind": "PASS"}
+{"text": "tô fora", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "PASS", "bid_kind": "PASS"}
+{"text": "sem lance", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "PASS", "bid_kind": "PASS"}
+{"text": "errei", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "CORRECT", "bid_kind": "CORRECT"}
+{"text": "dou-lhe uma", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "CHANT", "bid_kind": "CHANT"}
+{"text": "lote três", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "LOT", "bid_kind": "LOT"}
+{"text": "lote um", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "LOT", "bid_kind": "LOT"}
+{"text": "quero", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "NONE", "bid_kind": "UNKNOWN"}
+{"text": "cinquenta reais", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "duzentos e cinquenta mil", "value": 250000.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "um barão", "value": 1000.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "três placas", "value": 300000.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "meio pau", "value": 500.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cem conto", "value": 100.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "duas onças", "value": 100.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "meia dúzia", "value": 6.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "nove mil novecentos e noventa e nove", "value": 9999.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "dois patinhos na lagoa", "value": 22.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "a idade de cristo", "value": 33.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "justiça de goiás", "value": 38.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "três oitão", "value": 38.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "pernas da xuxa", "value": 11.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "uma boa ideia", "value": 51.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "vou de duzentos", "value": 200.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cinquenta na mão", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cinquenta pra levar", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "mil em cima", "value": 1000.0, "has_addition": true, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_DELTA"}
+{"text": "pelo valor de cem", "value": 100.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cinquenta redondo", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "duas dezenas", "value": 20.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "meia centena", "value": 50.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "um par de onças", "value": 100.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "onça e meia", "value": 75.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "errei era cinquenta", "value": 0.0, "has_addition": false, "has_multiplication": false, "action_type": "CORRECT", "bid_kind": "CORRECT"}
+{"text": "quarenta e sete", "value": 47.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cento e vinte e cinco", "value": 125.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "um milhão e duzentos mil", "value": 1200000.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "meio milhão", "value": 500000.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "sete seis", "value": 76.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}
+{"text": "cinco zero zero", "value": 500.0, "has_addition": false, "has_multiplication": false, "action_type": "BID", "bid_kind": "BID_ABSOLUTE"}

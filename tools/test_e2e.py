@@ -78,8 +78,10 @@ def main() -> int:
         hits += good
 
         flag = "OK " if good else "BAD"
-        print(f"{flag} said={asr.text!r:42s} -> {result.value:>12.2f} add={result.has_addition}"
-              f"  (want {want_value:.2f} add={want_add})")
+        print(
+            f"{flag} said={asr.text!r:42s} -> {result.value:>12.2f} add={result.has_addition}"
+            f"  (want {want_value:.2f} add={want_add})"
+        )
 
     print(f"\n{hits}/{len(rows)} clips fully correct")
     return 0 if hits == len(rows) else 1

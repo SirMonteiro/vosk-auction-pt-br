@@ -114,7 +114,9 @@ def detect(text: str) -> Intent:
     if match:
         token = match.group(1)
         number = int(token) if token.isdigit() else _WORD_NUMBERS.get(token, 0)
-        return Intent("LOT", match.group(0), _strip_match(normalized, match), multiplier=float(number))
+        return Intent(
+            "LOT", match.group(0), _strip_match(normalized, match), multiplier=float(number)
+        )
 
     match = _ORDINAL_LOT_RE.search(normalized)
     if match:
@@ -129,7 +131,9 @@ def detect(text: str) -> Intent:
     match = _MULTIPLIER_RE.search(normalized)
     if match:
         factor = MULTIPLIER_WORDS[match.group(1)]
-        return Intent("MULTIPLY", match.group(1), _strip_match(normalized, match), multiplier=factor)
+        return Intent(
+            "MULTIPLY", match.group(1), _strip_match(normalized, match), multiplier=factor
+        )
 
     # 7. BID (numbers are the parser's job) -------------------------------
     return Intent("BID", "", normalized)

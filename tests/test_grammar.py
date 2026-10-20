@@ -97,7 +97,11 @@ def test_no_phrases_contain_unknown_words_when_filtered() -> None:
 
 def test_grammar_stats() -> None:
     stats = grammar_stats(["um dois", "três"])
-    assert stats == {"phrases": 2, "tokens": 3, "bytes": len(json.dumps(["um dois", "três"], ensure_ascii=False))}
+    assert stats == {
+        "phrases": 2,
+        "tokens": 3,
+        "bytes": len(json.dumps(["um dois", "três"], ensure_ascii=False)),
+    }
 
 
 def test_phrases_from_texts_deduplicates_and_normalises() -> None:

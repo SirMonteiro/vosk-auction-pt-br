@@ -28,9 +28,9 @@ class VoskEngine:
         self.settings = settings
         self.model_path = settings.resolve_model_path()
         self.name = self.model_path.name
-        self._supports_grammar = (
-            (self.model_path / "HCLr.fst").is_file() and (self.model_path / "Gr.fst").is_file()
-        )
+        self._supports_grammar = (self.model_path / "HCLr.fst").is_file() and (
+            self.model_path / "Gr.fst"
+        ).is_file()
 
         SetLogLevel(0 if settings.debug else -1)
         started = time.perf_counter()

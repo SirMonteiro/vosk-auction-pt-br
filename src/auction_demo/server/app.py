@@ -28,8 +28,10 @@ logger = logging.getLogger(__name__)
 try:  # pragma: no cover - the dependency is declared
     from simple_websocket.ws import ConnectionClosed
 except ImportError:  # pragma: no cover - fall back to a broad base class
+
     class ConnectionClosed(Exception):  # type: ignore[no-redef]
         """Placeholder when simple_websocket is unavailable."""
+
 
 CONTRACT_VERSION = "1"
 
@@ -185,7 +187,9 @@ def _evaluate(engine: VoskEngine, settings: Settings, pcm: bytes):
     return _build_result(engine, settings, asr, pcm)
 
 
-def _build_result(engine: VoskEngine, settings: Settings, asr, pcm: bytes, reason: str | None = None):
+def _build_result(
+    engine: VoskEngine, settings: Settings, asr, pcm: bytes, reason: str | None = None
+):
     """Turn an :class:`ASRResult` into a :class:`BidResult` with gating.
 
     Gating uses the *unpadded* buffer: RMS measured on padded audio would clear

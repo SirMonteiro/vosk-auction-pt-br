@@ -166,9 +166,7 @@ def test_transcribe_silence_is_gated(client) -> None:
 
 def test_transcribe_short_audio_is_gated(client) -> None:
     short = (np.zeros(int(16000 * 0.05), dtype=np.int16)).tobytes()
-    response = client.post(
-        "/transcribe", data={"audio": (io.BytesIO(wav_bytes(short)), "a.wav")}
-    )
+    response = client.post("/transcribe", data={"audio": (io.BytesIO(wav_bytes(short)), "a.wav")})
     payload = response.get_json()
     assert payload["bid_kind"] == "UNKNOWN"
     assert payload["reason"] == "too_short"
@@ -202,4 +200,3 @@ def test_websocket_start_resets_session() -> None:
     _finalize(engine, settings, session, b"\x00\x01" * 3200)
     assert engine.finished == 1
     assert engine.last_fed
-

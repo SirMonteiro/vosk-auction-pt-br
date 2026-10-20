@@ -97,7 +97,6 @@ FRAME_NUMBERS = (
 )
 
 
-
 @dataclass(slots=True)
 class GrammarReport:
     """What the builder produced and what it had to drop."""

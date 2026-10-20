@@ -15,7 +15,8 @@ MODEL_DIR = PROJECT_ROOT / "models" / "small"
 pytestmark = pytest.mark.model
 
 requires_model = pytest.mark.skipif(
-    not MODEL_DIR.is_dir(), reason="models/small missing — run: uv run python -m tools.fetch_models small"
+    not MODEL_DIR.is_dir(),
+    reason="models/small missing — run: uv run python -m tools.fetch_models small",
 )
 
 

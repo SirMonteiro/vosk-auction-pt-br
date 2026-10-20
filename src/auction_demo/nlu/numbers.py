@@ -102,7 +102,9 @@ def classify(token: str) -> NumberToken:
         return NumberToken(raw=token, scale=SCALE_UNIT, value=None, kind="half")
 
     if lowered in SINGLE_DIGITS:
-        return NumberToken(raw=token, scale=SCALE_UNIT, value=float(SINGLE_DIGITS[lowered]), kind="base")
+        return NumberToken(
+            raw=token, scale=SCALE_UNIT, value=float(SINGLE_DIGITS[lowered]), kind="base"
+        )
 
     if lowered in BASES:
         value = float(BASES[lowered])
@@ -380,7 +382,10 @@ def parse_numbers(tokens: list[str]) -> ParseOutcome:
                 continue
             # Non-numeric quantity ("duas notas velhas") falls back to the
             # accumulated count.
-            chunk = [NumberToken(raw=str(note_count), scale=SCALE_UNIT, value=note_count, kind="digit"), token]
+            chunk = [
+                NumberToken(raw=str(note_count), scale=SCALE_UNIT, value=note_count, kind="digit"),
+                token,
+            ]
             last_scale = token.scale
             pending_note = False
             note_count = 1.0

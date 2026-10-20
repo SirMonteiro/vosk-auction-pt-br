@@ -49,9 +49,7 @@ def synthesize(voice: PiperVoice, text: str, length_scale: float = 0.9) -> bytes
     samples = np.frombuffer(reader.readframes(reader.getnframes()), dtype=np.int16)
     audio = samples.astype(np.float32) / 32768.0
     divisor = math.gcd(rate, 16_000)
-    resampled = np.zeros(
-        int(audio.size * 16_000 // rate), dtype=np.float32
-    )
+    resampled = np.zeros(int(audio.size * 16_000 // rate), dtype=np.float32)
     if rate != 16_000 and audio.size:
         source = np.arange(audio.size) / rate
         target = np.arange(resampled.size) / 16_000
@@ -79,7 +77,9 @@ def main() -> int:
         pcm = synthesize(voice, phrase)
         path = OUT_DIR / f"e2e-{index:03d}.wav"
         write_wav(path, pcm)
-        rows.append({"id": f"e2e-{index:03d}", "audio": str(path.relative_to(PROJECT_ROOT)), "text": phrase})
+        rows.append(
+            {"id": f"e2e-{index:03d}", "audio": str(path.relative_to(PROJECT_ROOT)), "text": phrase}
+        )
         print(f"  {path.name}  {len(pcm) / 32000:.2f}s  {phrase!r}")
 
     MANIFEST.write_text(

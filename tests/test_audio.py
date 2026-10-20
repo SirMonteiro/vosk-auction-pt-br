@@ -30,7 +30,7 @@ def test_duration_and_rms() -> None:
 def test_pad_utterance() -> None:
     padded = audio.pad_utterance(tone(100), lead_ms=300, tail_ms=400)
     assert audio.duration_ms(padded) == pytest.approx(800.0, abs=1.0)
-    assert audio.rms(padded[:300 * 32]) == 0.0
+    assert audio.rms(padded[: 300 * 32]) == 0.0
 
 
 def test_is_silent() -> None:

@@ -18,6 +18,7 @@ from __future__ import annotations
 import time
 
 from auction_demo.nlu.currency import format_brazilian_currency
+from auction_demo.nlu.idioms import replace_idioms
 from auction_demo.nlu.intents import (
     closing_marker,
     delta_marker,
@@ -27,6 +28,7 @@ from auction_demo.nlu.intents import (
 )
 from auction_demo.nlu.models import BidResult, NBestItem, action_for
 from auction_demo.nlu.numbers import parse_numbers
+from auction_demo.nlu.phonetics import repair_phonetics
 
 
 def _empty(raw: str, reason: str | None = None) -> BidResult:
@@ -76,11 +78,24 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
         return result
 
     normalized = normalize(raw)
-    intent = detect(normalized)
+
+    # 2. Idiom pass (longest-match replacement: bingo, fauna, colloquial quantifiers)
+    text_idioms, idioms_found = replace_idioms(normalized)
+
+    # 3. Phonetic pass (guarded acoustic and sandhi repairs)
+    repaired, repairs = repair_phonetics(text_idioms)
+
+    # 4. Intent pass (CHANT -> CORRECT -> PASS -> QUERY -> LOT -> MULTIPLY -> BID)
+    intent = detect(repaired)
 
     trace: dict = {}
     if debug:
-        trace = {"intent": intent.name, "matched": intent.matched}
+        trace = {
+            "intent": intent.name,
+            "matched": intent.matched,
+            "idioms_found": idioms_found,
+            "repairs": repairs,
+        }
 
     # --- non-bid intents -------------------------------------------------
     if intent.name in {"PASS", "CORRECT", "QUERY", "CHANT"}:
@@ -93,6 +108,7 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
             currency=format_brazilian_currency(0.0),
             action_type=action_for(kind),
             bid_kind=kind,
+            idioms_found=idioms_found,
             closing=closing_marker(normalized),
         )
         # "errei, era cinquenta" carries the corrected value.
@@ -100,7 +116,7 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
             numbers = parse_numbers(intent.remainder.split())
             if numbers.values:
                 result.target_value = numbers.values[-1]
-        result.confidence = _confidence(result, 0, 0)
+        result.confidence = _confidence(result, 0, len(repairs))
         result.trace = trace
         result.latency_ms = (time.perf_counter() - started) * 1000
         return result
@@ -115,8 +131,9 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
             action_type="LOT",
             bid_kind="LOT",
             lot=int(intent.multiplier or 0),
+            idioms_found=idioms_found,
         )
-        result.confidence = _confidence(result, 0, 0)
+        result.confidence = _confidence(result, 0, len(repairs))
         result.trace = trace
         result.latency_ms = (time.perf_counter() - started) * 1000
         return result
@@ -126,10 +143,14 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
     multiplier = intent.multiplier if intent.name == "MULTIPLY" else None
     marker = delta_marker(cleaned)
 
-    # Remove the leading marker before parsing so "mais vinte" is not "more 20".
+    # Remove the marker before parsing so "mais vinte" is not "more 20",
+    # handling leading markers ("mais vinte") or trailing markers ("mil em cima").
     number_text = cleaned
     if marker:
-        number_text = cleaned[len(marker) :].strip()
+        if cleaned.startswith(marker):
+            number_text = cleaned[len(marker) :].strip()
+        elif cleaned.endswith(marker):
+            number_text = cleaned[: -len(marker)].strip()
 
     parsed = parse_numbers(number_text.split())
     values = parsed.values
@@ -158,8 +179,9 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
             action_type="MULTIPLY_ONLY",
             bid_kind="MULTIPLY_ONLY",
             numbers_found=[],
+            idioms_found=idioms_found,
         )
-        result.confidence = _confidence(result, dropped, 0)
+        result.confidence = _confidence(result, dropped, len(repairs))
         result.trace = trace
         result.latency_ms = (time.perf_counter() - started) * 1000
         return result
@@ -168,6 +190,7 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
     if not values:
         result = _empty(raw, reason="unknown")
         result.normalized_text = normalized
+        result.idioms_found = idioms_found
         result.trace = trace
         result.latency_ms = (time.perf_counter() - started) * 1000
         return result
@@ -210,7 +233,7 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
 
     result = BidResult(
         raw_transcript=raw,
-        normalized_text=cleaned,
+        normalized_text=normalized,
         value=float(value),
         int_value=int(round(value)),
         currency=format_brazilian_currency(value),
@@ -221,9 +244,10 @@ def parse(text: str, *, debug: bool = False) -> BidResult:
         action_type=action_for(kind),
         bid_kind=kind,
         numbers_found=values,
+        idioms_found=idioms_found,
         closing=closing_marker(normalized),
     )
-    result.confidence = _confidence(result, dropped, 0)
+    result.confidence = _confidence(result, dropped, len(repairs))
     result.trace = trace
     result.latency_ms = (time.perf_counter() - started) * 1000
     return result
