@@ -59,7 +59,9 @@ Acceptance:
 - No false positive from the phonetic pass on the 200-word stoplist.
 - `"quero"`, `"sem lance"`, `"dou-lhe uma"`, `"lote um"` produce the documented intents.
 
-### P3 — Corpus + eval (1 day)
+### P3 — Corpus + eval (Optional / Deferred)
+
+*(Deferred: P0–P2 accuracy and latency are verified and sufficient for first game integration; see P-Unity below).*
 
 Deliverables:
 
@@ -73,23 +75,40 @@ Acceptance:
 - Report states model, grammar size, corpus hash, provenance.
 - Baseline numbers within ±3 points of the measured §4.9 values.
 
-### P4 — Corpus iteration + second LM (1 day, optional)
+### P4 — Corpus iteration + second LM (Optional / Deferred)
 
 Deliverables:
 
-- Corpus v2 targeting the residual failures (long compounds, chained `mais`, bare `dobro`).
+- Corpus v2 targeting residual edge cases.
 - `models/small-lm-v2/` + A/B report against `small-lm-v1`.
 
 Acceptance:
 
 - ≥ 39/40 value accuracy on the 40-case suite, or a documented negative result.
 
-### P5 — Optional (as needed)
+### P5 — Optional features (As needed)
 
-- `tools/build_lexicon.py` for OOV idioms (`small-lm-v3`).
-- Pruned "accuracy mode" wiring (`--model pruned`, grammar auto-disabled with warning).
 - Spelled-digit mode (`cinco zero` → 50) end-to-end.
 - `--replay` CLI mode: feed a WAV through the exact WS pipeline for debugging.
+
+### P-Unity — Unity C# Package & Direct Integration (ACTIVE MILESTONE)
+
+Deliverables:
+
+- Self-contained Unity Package (`Packages/com.auction.voice` / `Assets/Packages/AuctionVoice`) conforming to SOLID design principles.
+- Core Interfaces: `IAudioCaptureService`, `ISpeechRecognitionEngine`, `INluParser`, `IBidProcessorService`.
+- Push-to-talk controller integrated with Unity's new Input System (`InputActionReference`) with configurable post-release grace period (default 250ms).
+- Native Vosk P/Invoke wrapper loading `small-lm-v1` from `StreamingAssets`.
+- Direct C# port of the reference NLU (Lexicon, Numbers, Idioms, Phonetics, Intents, Parser).
+- Debug logging conditionally compiled (`#if UNITY_EDITOR || DEVELOPMENT_BUILD`) with inspector toggle.
+- Comprehensive C# unit test suite mirroring `text_cases.jsonl` (40/40 test cases).
+
+Acceptance:
+
+- Can be copied into a clean Unity 2022.3+ / Unity 6 project without compile errors or external Python dependencies.
+- Zero main-thread audio hiccups; all ASR inference runs on background tasks.
+- Push-to-talk releases properly flush audio and return parsed bid within 150ms.
+- 40/40 reference test cases pass identically in C#.
 
 
 ## 2. Definition of done for the demo (P0–P3)
@@ -123,24 +142,23 @@ The demo is done when, on a machine with only `uv` and `ffmpeg`:
 
 ## 4. Timeline
 
-| Phase | Effort | Depends on |
-|---|---|---|
-| P0 | 0.5 d | — |
-| P1 | 1.5 d | P0 |
-| P2 | 1 d | P0 |
-| P3 | 1 d | P1, P2 |
-| P4 | 1 d | P3 |
-| P5 | as needed | P4 |
+| Phase | Effort | Depends on | Status |
+|---|---|---|---|
+| P0 | 0.5 d | — | DONE |
+| P1 | 1.5 d | P0 | DONE |
+| P2 | 1 d | P0 | DONE |
+| P-Unity | 2 d | P2 | ACTIVE (branch `csharp`) |
+| P3 | 1 d | P1, P2 | Optional / Deferred |
+| P4 | 1 d | P3 | Optional / Deferred |
+| P5 | as needed | P4 | Optional |
 
-Total to a complete demo with the LM-rebuilt model and baseline report: **4 days of work**.
-The LM rebuild is no longer a separate research phase — it is part of P1 and already proven to
-deliver ~+10 points of value accuracy and an 8× decode speedup.
+Total Python scaffold + demo (P0–P2): **3 days of work** (Complete).
+Active focus shifted to Unity C# Package port for direct game integration.
 
 
 ## 5. Explicitly out of scope
 
-- Unity/C# code, prefabs, scene wiring, WebGL.
-- Packaging for distribution (PyInstaller, Docker images).
+- Packaging Python server for distribution (PyInstaller, Docker images).
 - Multi-user/session persistence, database, authentication.
-- Wake-word, continuous listening, VAD-based segmentation.
 - Acoustic fine-tuning (documented as a research branch only).
+- WebGL audio capture (Desktop Standalone target initially).
