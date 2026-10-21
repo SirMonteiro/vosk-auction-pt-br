@@ -133,6 +133,28 @@ Without the grace period, terminal consonants are clipped: `"cinquenta"` decodes
 - Events are raised on the main thread. `PushToTalkController` additionally queues them if a
   custom service raises from a worker.
 
+## Troubleshooting: "I held the button and got nothing"
+
+The result reports `kind=UNKNOWN reason=silence` with low confidence. Two very different causes
+produce that identical symptom, so check the `[CAP]` line first:
+
+```
+[CAP]  dur=1881ms  rms=0.1300  rate=48000Hz
+```
+
+| Reading | Meaning |
+|---|---|
+| `dur=0ms` | No audio reached the service. Microphone permission, a held device, or a muted input. |
+| `dur` much less than the time you held the key | Capture is dropping audio — check `rate` against your device's native rate. |
+| `rms` below ~0.004 | Audio arrived but is effectively silent. Wrong device selected, or input gain at zero. |
+| `dur` and `rms` both sane, transcript still empty | The recogniser received audio it could not decode. Check the model directory is complete (`final.mdl`, `HCLr.fst`, `Gr.fst`). |
+
+`rate` is the rate the device **actually opened at** (`AudioClip.frequency`), which is not always
+the rate that was requested. The capture path converts at that rate and then resamples to 16 kHz;
+if those two ever disagree, speech arrives time-compressed and decodes as fragments.
+
+Enable `_enableVerboseDebug` on the bootstrap to get the `[CAP]` line.
+
 ## Diagnostics
 
 `AuctionLogger.IsDebugEnabled` gates every message before a string is built, so release builds

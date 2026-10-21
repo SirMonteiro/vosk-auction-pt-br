@@ -161,8 +161,16 @@ namespace AuctionVoice.Audio
         /// Downsamples or upsamples 16-bit mono PCM by linear interpolation.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Adequate for speech at these rates and free of a DSP dependency, matching the
         /// reference implementation's <c>_resample</c>.
+        /// </para>
+        /// <para>
+        /// Per-chunk resampling loses one sample to rounding whenever the ratio is not an
+        /// integer. At 48 kHz to 16 kHz the ratio is exactly 3, so a 100 ms chunk maps to exactly
+        /// 1600 samples and nothing is lost. For non-integer ratios use
+        /// <see cref="Resampler"/>, which carries the fractional position across chunks.
+        /// </para>
         /// </remarks>
         public static byte[] Resample(byte[] pcm, int sourceRate, int targetRate)
         {
@@ -171,26 +179,8 @@ namespace AuctionVoice.Audio
                 return pcm;
             }
 
-            int sourceSamples = pcm.Length / BytesPerSample;
-            double duration = sourceSamples / (double)sourceRate;
-            int targetSamples = (int)Math.Round(duration * targetRate);
-            var result = new byte[targetSamples * BytesPerSample];
-
-            for (int i = 0; i < targetSamples; i++)
-            {
-                double sourcePosition = i * (double)sourceRate / targetRate;
-                int index = (int)sourcePosition;
-                double fraction = sourcePosition - index;
-                float a = ReadSample(pcm, index * BytesPerSample);
-                float b = index + 1 < sourceSamples
-                    ? ReadSample(pcm, (index + 1) * BytesPerSample)
-                    : a;
-                short sample = (short)(a + (b - a) * fraction);
-                result[i * 2] = (byte)(sample & 0xFF);
-                result[i * 2 + 1] = (byte)((sample >> 8) & 0xFF);
-            }
-
-            return result;
+            var resampler = new Resampler(sourceRate, targetRate);
+            return resampler.Process(pcm, pcm.Length);
         }
 
         /// <summary>
@@ -214,6 +204,116 @@ namespace AuctionVoice.Audio
             }
 
             return (short)(pcm[byteOffset] | (pcm[byteOffset + 1] << 8));
+        }
+    }
+
+    /// <summary>
+    /// Streaming linear resampler that preserves the fractional read position across chunks.
+    /// </summary>
+    /// <remarks>
+    /// Resampling each captured chunk independently and rounding the output length loses a
+    /// sample whenever the rate ratio is not an integer (44.1 kHz to 16 kHz is 2.756...). Over a
+    /// few seconds those losses accumulate into a drifting, time-compressed signal, which the
+    /// decoder hears as clipped, rushed speech. Carrying the remainder makes the output rate
+    /// exact in aggregate.
+    /// </remarks>
+    public sealed class Resampler
+    {
+        private readonly int _sourceRate;
+        private readonly int _targetRate;
+        private readonly double _step;
+        private double _position;
+
+        /// <summary>Creates a resampler between two rates.</summary>
+        public Resampler(int sourceRate, int targetRate)
+        {
+            if (sourceRate <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sourceRate));
+            }
+
+            if (targetRate <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetRate));
+            }
+
+            _sourceRate = sourceRate;
+            _targetRate = targetRate;
+            _step = (double)sourceRate / targetRate;
+            _position = 0d;
+        }
+
+        /// <summary>True when the two rates are equal, so processing is a copy.</summary>
+        public bool IsIdentity => _sourceRate == _targetRate;
+
+        /// <summary>Converts one chunk, carrying the fractional position into the next call.</summary>
+        public byte[] Process(byte[] pcm, int count)
+        {
+            if (pcm == null || count <= 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            int length = Math.Min(count, pcm.Length);
+            int sourceSamples = length / PcmAudio.BytesPerSample;
+            if (sourceSamples == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            if (IsIdentity)
+            {
+                var copy = new byte[sourceSamples * PcmAudio.BytesPerSample];
+                Array.Copy(pcm, copy, copy.Length);
+                return copy;
+            }
+
+            // Worst case is upsampling by the ratio; one extra sample covers the carried phase.
+            int capacity = (int)Math.Ceiling(sourceSamples / _step) + 2;
+            var output = new byte[capacity * PcmAudio.BytesPerSample];
+            int written = 0;
+
+            while (_position < sourceSamples)
+            {
+                int index = (int)_position;
+                double fraction = _position - index;
+
+                // The carried phase is always within [0, 1) of this chunk, so index 0 with a
+                // non-zero fraction interpolates between sample 0 and sample 1 of THIS chunk.
+                // Using a remembered previous sample here would zero the first output sample of
+                // every chunk.
+                short a = ReadSampleAt(pcm, index);
+                short b = index + 1 < sourceSamples ? ReadSampleAt(pcm, index + 1) : a;
+                short sample = (short)(a + (b - a) * fraction);
+
+                output[written * 2] = (byte)(sample & 0xFF);
+                output[written * 2 + 1] = (byte)((sample >> 8) & 0xFF);
+                written++;
+                _position += _step;
+            }
+
+            // Carry only the fractional phase into the next chunk.
+            _position -= sourceSamples;
+
+            if (written * 2 == output.Length)
+            {
+                return output;
+            }
+
+            var trimmed = new byte[written * PcmAudio.BytesPerSample];
+            Array.Copy(output, trimmed, trimmed.Length);
+            return trimmed;
+        }
+
+        private static short ReadSampleAt(byte[] pcm, int sampleIndex)
+        {
+            int offset = sampleIndex * PcmAudio.BytesPerSample;
+            if (offset < 0 || offset + 1 >= pcm.Length)
+            {
+                return 0;
+            }
+
+            return (short)(pcm[offset] | (pcm[offset + 1] << 8));
         }
     }
 }

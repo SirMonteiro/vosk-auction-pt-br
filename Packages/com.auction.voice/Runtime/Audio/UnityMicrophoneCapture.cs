@@ -38,6 +38,9 @@ namespace AuctionVoice.Audio
         private byte[] _chunkBuffer;
         private float[] _floatBuffer;
         private float[] _wrapScratch;
+        private Resampler _resampler;
+        private float[] _leftover;
+        private int _leftoverCount;
         private int _lastSamplePosition;
         private int _sampleRate = PcmAudio.SampleRate;
         private bool _disposed;
@@ -72,20 +75,33 @@ namespace AuctionVoice.Audio
             }
 
             Microphone.GetDeviceCaps(DeviceName, out int minRate, out int maxRate);
-            int deviceRate = ChooseDeviceRate(minRate, maxRate);
-            _sampleRate = deviceRate;
+            int requestedRate = ChooseDeviceRate(minRate, maxRate);
 
             _clip = Microphone.Start(
-                DeviceName, true, Math.Max(1, MaxRecordingSeconds), deviceRate);
+                DeviceName, true, Math.Max(1, MaxRecordingSeconds), requestedRate);
             if (_clip == null)
             {
                 throw new InvalidOperationException(
                     "Microphone.Start failed. Another application may hold the device.");
             }
 
-            // Vosk wants 16 kHz; resample from the device rate when it differs.
-            _chunkBuffer = new byte[PcmAudio.SampleRate * ChunkMs / 1000 * PcmAudio.BytesPerSample];
-            _floatBuffer = new float[_clip.frequency * ChunkMs / 1000];
+            // The clip's ACTUAL rate is authoritative: Unity is free to ignore the request and
+            // open the device at its native rate. Sizing buffers from the requested rate while
+            // the clip produces a different one silently truncates or over-reads every chunk.
+            int actualRate = _clip.frequency > 0 ? _clip.frequency : requestedRate;
+            _sampleRate = actualRate;
+
+            // Two different sample rates are in play: the device produces `actualRate`, and Vosk
+            // wants 16 kHz. Convert at the DEVICE rate first, then resample.
+            //
+            // Sizing the PCM buffer for 16 kHz while converting device-rate samples is a silent
+            // 3x time-compression on a 48 kHz device: FloatToPcm16 truncates to the destination
+            // length, so two thirds of every chunk is discarded, and the surviving third is then
+            // resampled as though it were the whole chunk.
+            _chunkBuffer = new byte[actualRate * ChunkMs / 1000 * PcmAudio.BytesPerSample];
+            _floatBuffer = new float[actualRate * ChunkMs / 1000];
+            _resampler = new Resampler(actualRate, PcmAudio.SampleRate);
+            _leftoverCount = 0;
             _lastSamplePosition = 0;
             IsCapturing = true;
         }
@@ -125,23 +141,75 @@ namespace AuctionVoice.Audio
             }
 
             int chunkSamples = _floatBuffer.Length;
-            while (available >= chunkSamples)
+
+            // Read the tail before touching _lastSamplePosition so a wrap stays consistent.
+            while (available > 0)
             {
-                if (!ReadSamples(_lastSamplePosition, chunkSamples))
+                int take = Math.Min(chunkSamples, available);
+                if (!ReadSamples(_lastSamplePosition, take))
                 {
                     break;
                 }
 
-                int bytes = PcmAudio.FloatToPcm16(_floatBuffer, chunkSamples, _chunkBuffer);
-                byte[] chunk = PcmAudio.Prepare(
-                    Slice(_chunkBuffer, bytes), _sampleRate, PcmAudio.SampleRate);
+                AppendToLeftover(take);
 
-                _preRoll.Write(chunk, chunk.Length);
-                OnChunkReady?.Invoke(chunk);
+                _lastSamplePosition = (_lastSamplePosition + take) % _clip.samples;
+                available -= take;
 
-                _lastSamplePosition = (_lastSamplePosition + chunkSamples) % _clip.samples;
-                available -= chunkSamples;
+                // Emit whole chunks; the remainder stays buffered for the next tick (or for
+                // FlushRemainder when the session ends). Emitting only whole chunks and dropping
+                // the remainder would silently cut up to one chunk of speech off the end of
+                // every utterance, which is exactly where the final syllable lives.
+                while (_leftoverCount >= chunkSamples)
+                {
+                    EmitChunk(chunkSamples);
+                    Array.Copy(
+                        _leftover, chunkSamples, _leftover, 0, _leftoverCount - chunkSamples);
+                    _leftoverCount -= chunkSamples;
+                }
             }
+        }
+
+        /// <summary>
+        /// Emits any buffered partial chunk. Call before stopping capture.
+        /// </summary>
+        /// <remarks>
+        /// Without this the last few milliseconds of the utterance (up to <see cref="ChunkMs"/>)
+        /// never reach the recogniser, so the final consonant of a bid is clipped even though the
+        /// player held the key long enough.
+        /// </remarks>
+        public void FlushRemainder()
+        {
+            if (!IsCapturing || _clip == null || _leftoverCount <= 0)
+            {
+                return;
+            }
+
+            // Pad the short chunk with silence so the recogniser still receives a full window.
+            int chunkSamples = _floatBuffer.Length;
+            Array.Clear(_leftover, _leftoverCount, chunkSamples - _leftoverCount);
+            EmitChunk(chunkSamples);
+            _leftoverCount = 0;
+        }
+
+        private void AppendToLeftover(int count)
+        {
+            if (_leftover == null || _leftover.Length < _floatBuffer.Length)
+            {
+                _leftover = new float[_floatBuffer.Length];
+            }
+
+            Array.Copy(_floatBuffer, 0, _leftover, _leftoverCount, count);
+            _leftoverCount += count;
+        }
+
+        private void EmitChunk(int chunkSamples)
+        {
+            int bytes = PcmAudio.FloatToPcm16(_leftover, chunkSamples, _chunkBuffer);
+            byte[] converted = _resampler.Process(_chunkBuffer, bytes);
+
+            _preRoll.Write(converted, converted.Length);
+            OnChunkReady?.Invoke(converted);
         }
 
         /// <summary>
@@ -188,18 +256,6 @@ namespace AuctionVoice.Audio
             return true;
         }
 
-        private static byte[] Slice(byte[] source, int count)
-        {
-            if (count == source.Length)
-            {
-                return source;
-            }
-
-            var result = new byte[count];
-            Array.Copy(source, result, count);
-            return result;
-        }
-
         /// <inheritdoc />
         public void StopCapture()
         {
@@ -209,6 +265,7 @@ namespace AuctionVoice.Audio
             }
 
             IsCapturing = false;
+            _leftoverCount = 0;
             if (!string.IsNullOrEmpty(DeviceName) || Microphone.IsRecording(DeviceName))
             {
                 Microphone.End(DeviceName);

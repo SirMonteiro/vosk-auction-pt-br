@@ -219,6 +219,13 @@ namespace AuctionVoice.Service
 
             if (_capture != null)
             {
+                // Emit the buffered partial chunk first: it holds the final syllable, and
+                // StopCapture would discard it.
+                if (_capture is UnityMicrophoneCapture microphone)
+                {
+                    microphone.FlushRemainder();
+                }
+
                 _capture.StopCapture();
             }
 
@@ -268,9 +275,22 @@ namespace AuctionVoice.Service
                 }
 
                 result.LatencyMs = (float)((Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency);
+
+                // Capture telemetry. Without it, a capture-side bug is indistinguishable from a
+                // silent microphone: both arrive as "held the key, got nothing".
                 result.AddTrace(DebugParsing, "model", _engine.ModelName);
                 result.AddTrace(DebugParsing, "decode_ms",
                     asr.DecodeMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture));
+                result.AddTrace(DebugParsing, "captured_ms",
+                    durationMs.ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+                result.AddTrace(DebugParsing, "captured_rms",
+                    PcmAudio.Rms(utterance).ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture));
+                result.AddTrace(DebugParsing, "capture_rate",
+                    (_capture?.SampleRate ?? _engine.SampleRate)
+                    .ToString(System.Globalization.CultureInfo.InvariantCulture));
+                result.AddTrace(DebugParsing, "asr_text", asr.Text ?? string.Empty);
+                result.AddTrace(DebugParsing, "nbest_count",
+                    candidates.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
                 long totalMs = (long)result.LatencyMs;
                 _logger.LogBidResult(result, totalMs);

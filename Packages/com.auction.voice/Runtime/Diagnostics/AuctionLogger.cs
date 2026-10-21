@@ -119,6 +119,22 @@ namespace AuctionVoice.Diagnostics
                 .Append("  ").Append(latencyMs).Append("ms")
                 .AppendLine();
 
+            // Capture telemetry. The single most useful line when "I held the button and got
+            // nothing": captured_ms shows whether audio arrived at all, and capture_rate shows
+            // whether the device actually opened at the rate the resampler assumes.
+            string capturedMs;
+            string capturedRms;
+            string captureRate;
+            if (result.Trace.TryGetValue("captured_ms", out capturedMs)
+                | result.Trace.TryGetValue("captured_rms", out capturedRms)
+                | result.Trace.TryGetValue("capture_rate", out captureRate))
+            {
+                builder.Append("[CAP]  dur=").Append(capturedMs ?? "?")
+                    .Append("ms  rms=").Append(capturedRms ?? "?")
+                    .Append("  rate=").Append(captureRate ?? "?").Append("Hz")
+                    .AppendLine();
+            }
+
             if (result.RejectReason != BidRejectReason.None)
             {
                 builder.Append("[WHY]  ").AppendLine(result.Reason);

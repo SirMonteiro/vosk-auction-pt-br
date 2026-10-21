@@ -59,7 +59,7 @@ echo "== compiling tests + runner =="
 test_sources=()
 while IFS= read -r file; do
     test_sources+=("$file")
-done < <(find "$PKG/Tests/Editor" "$HEADLESS" -name '*.cs' | sort)
+done < <(find "$PKG/Tests/Editor" "$HEADLESS" -name '*.cs' ! -name 'AsrProbe.cs' | sort)
 
 "$DOTNET_ROOT/dotnet" exec "$CSC" \
     -nologo -langversion:9.0 -target:exe -warn:0 \
