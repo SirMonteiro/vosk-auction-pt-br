@@ -208,6 +208,11 @@ namespace NUnit.Framework
             return new ComparisonConstraint(expected, ComparisonKind.Less);
         }
 
+        public static IResolveConstraint LessThanOrEqualTo(int expected)
+        {
+            return new ComparisonConstraint(expected, ComparisonKind.LessOrEqual);
+        }
+
         public static IResolveConstraint True
         {
             get { return new BoolConstraint(true); }
@@ -482,7 +487,8 @@ namespace NUnit.Framework
     {
         Greater,
         GreaterOrEqual,
-        Less
+        Less,
+        LessOrEqual
     }
 
     public sealed class ComparisonConstraint : IResolveConstraint
@@ -508,6 +514,9 @@ namespace NUnit.Framework
                     break;
                 case ComparisonKind.Less:
                     ok = value < _expected;
+                    break;
+                case ComparisonKind.LessOrEqual:
+                    ok = value <= _expected;
                     break;
                 default:
                     ok = value >= _expected;

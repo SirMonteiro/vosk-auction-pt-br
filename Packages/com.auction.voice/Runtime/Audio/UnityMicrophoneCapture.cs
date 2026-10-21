@@ -36,11 +36,9 @@ namespace AuctionVoice.Audio
         private AudioClip _clip;
         private PreRollBuffer _preRoll;
         private byte[] _chunkBuffer;
-        private float[] _floatBuffer;
-        private float[] _wrapScratch;
         private Resampler _resampler;
-        private float[] _leftover;
-        private int _leftoverCount;
+        private ChunkAssembler _assembler;
+        private float[] _readBuffer;
         private int _lastSamplePosition;
         private int _sampleRate = PcmAudio.SampleRate;
         private bool _disposed;
@@ -98,10 +96,11 @@ namespace AuctionVoice.Audio
             // 3x time-compression on a 48 kHz device: FloatToPcm16 truncates to the destination
             // length, so two thirds of every chunk is discarded, and the surviving third is then
             // resampled as though it were the whole chunk.
-            _chunkBuffer = new byte[actualRate * ChunkMs / 1000 * PcmAudio.BytesPerSample];
-            _floatBuffer = new float[actualRate * ChunkMs / 1000];
+            int chunkSamples = actualRate * ChunkMs / 1000;
+            _chunkBuffer = new byte[chunkSamples * PcmAudio.BytesPerSample];
+            _readBuffer = new float[chunkSamples];
+            _assembler = new ChunkAssembler(chunkSamples);
             _resampler = new Resampler(actualRate, PcmAudio.SampleRate);
-            _leftoverCount = 0;
             _lastSamplePosition = 0;
             IsCapturing = true;
         }
@@ -140,32 +139,38 @@ namespace AuctionVoice.Audio
                 available += _clip.samples;
             }
 
-            int chunkSamples = _floatBuffer.Length;
-
-            // Read the tail before touching _lastSamplePosition so a wrap stays consistent.
             while (available > 0)
             {
-                int take = Math.Min(chunkSamples, available);
+                // Never ask the assembler for more than it has room for: a partial remainder
+                // plus a full chunk is one chunk too many, which used to throw
+                // "Destination array was not long enough".
+                int take = Math.Min(available, _assembler.Room);
+                if (take <= 0)
+                {
+                    break;
+                }
+
                 if (!ReadSamples(_lastSamplePosition, take))
                 {
                     break;
                 }
 
-                AppendToLeftover(take);
-
-                _lastSamplePosition = (_lastSamplePosition + take) % _clip.samples;
-                available -= take;
-
-                // Emit whole chunks; the remainder stays buffered for the next tick (or for
-                // FlushRemainder when the session ends). Emitting only whole chunks and dropping
-                // the remainder would silently cut up to one chunk of speech off the end of
-                // every utterance, which is exactly where the final syllable lives.
-                while (_leftoverCount >= chunkSamples)
+                int appended = _assembler.Append(_readBuffer, take);
+                if (appended <= 0)
                 {
-                    EmitChunk(chunkSamples);
-                    Array.Copy(
-                        _leftover, chunkSamples, _leftover, 0, _leftoverCount - chunkSamples);
-                    _leftoverCount -= chunkSamples;
+                    break;
+                }
+
+                _lastSamplePosition = (_lastSamplePosition + appended) % _clip.samples;
+                available -= appended;
+
+                // Emit whole chunks; any remainder stays buffered for the next tick (or for
+                // FlushRemainder when the session ends). Dropping the remainder would silently
+                // cut up to one chunk of speech off the end of every utterance.
+                if (_assembler.IsFull)
+                {
+                    EmitChunk();
+                    _assembler.Reset();
                 }
             }
         }
@@ -180,32 +185,21 @@ namespace AuctionVoice.Audio
         /// </remarks>
         public void FlushRemainder()
         {
-            if (!IsCapturing || _clip == null || _leftoverCount <= 0)
+            if (!IsCapturing || _clip == null || _assembler.Count <= 0)
             {
                 return;
             }
 
             // Pad the short chunk with silence so the recogniser still receives a full window.
-            int chunkSamples = _floatBuffer.Length;
-            Array.Clear(_leftover, _leftoverCount, chunkSamples - _leftoverCount);
-            EmitChunk(chunkSamples);
-            _leftoverCount = 0;
+            _assembler.PadWithSilence();
+            EmitChunk();
+            _assembler.Reset();
         }
 
-        private void AppendToLeftover(int count)
+        private void EmitChunk()
         {
-            if (_leftover == null || _leftover.Length < _floatBuffer.Length)
-            {
-                _leftover = new float[_floatBuffer.Length];
-            }
-
-            Array.Copy(_floatBuffer, 0, _leftover, _leftoverCount, count);
-            _leftoverCount += count;
-        }
-
-        private void EmitChunk(int chunkSamples)
-        {
-            int bytes = PcmAudio.FloatToPcm16(_leftover, chunkSamples, _chunkBuffer);
+            int bytes = PcmAudio.FloatToPcm16(
+                _assembler.Buffer, _assembler.ChunkSamples, _chunkBuffer);
             byte[] converted = _resampler.Process(_chunkBuffer, bytes);
 
             _preRoll.Write(converted, converted.Length);
@@ -213,47 +207,64 @@ namespace AuctionVoice.Audio
         }
 
         /// <summary>
-        /// Reads <paramref name="count"/> samples starting at <paramref name="offset"/>, wrapping
-        /// at the end of the clip.
+        /// Reads <paramref name="count"/> samples starting at <paramref name="offset"/> into
+        /// <see cref="_readBuffer"/>, wrapping at the end of the clip.
         /// </summary>
         /// <remarks>
-        /// <see cref="AudioClip.GetData"/> does not wrap: a read that crosses the end of the ring
-        /// buffer returns false. Without splitting the read, capture would stall permanently the
-        /// first time the buffer wrapped.
+        /// <para>
+        /// <see cref="AudioClip.GetData"/> reads <b>exactly</b> <c>data.Length</c> samples and does
+        /// not wrap: a read that crosses the end of the ring buffer returns false, and a read that
+        /// would run past the end fails outright. Passing an oversized array is therefore a bug
+        /// even though the extra samples are ignored by the caller.
+        /// </para>
+        /// <para>
+        /// The wrap branch allocates two exactly-sized arrays. That happens at most once per
+        /// <see cref="MaxRecordingSeconds"/> of audio, so it is not a per-frame cost, and it keeps
+        /// the read exact rather than "usually right".
+        /// </para>
         /// </remarks>
         private bool ReadSamples(int offset, int count)
         {
             int total = _clip.samples;
+            if (count <= 0 || count > total)
+            {
+                return false;
+            }
+
             int firstRun = Math.Min(count, total - offset);
 
             if (firstRun == count)
             {
-                return _clip.GetData(_floatBuffer, offset);
+                EnsureReadBuffer(count);
+                return _clip.GetData(_readBuffer, offset);
             }
 
+            // The read crosses the end of the ring buffer: split it into two exact reads.
             int secondRun = count - firstRun;
-
-            // Read the head into a scratch buffer, the tail into the main buffer, then recombine
-            // so the result is contiguous and chronological.
-            if (_wrapScratch == null || _wrapScratch.Length < count)
-            {
-                _wrapScratch = new float[count];
-            }
-
-            if (!_clip.GetData(_wrapScratch, offset))
+            var head = new float[firstRun];
+            if (!_clip.GetData(head, offset))
             {
                 return false;
             }
 
-            if (!_clip.GetData(_floatBuffer, 0))
+            var tail = new float[secondRun];
+            if (!_clip.GetData(tail, 0))
             {
                 return false;
             }
 
-            // _floatBuffer now holds [0, secondRun) of the tail. Shift it up and put the head first.
-            Array.Copy(_floatBuffer, 0, _floatBuffer, firstRun, secondRun);
-            Array.Copy(_wrapScratch, 0, _floatBuffer, 0, firstRun);
+            EnsureReadBuffer(count);
+            Array.Copy(head, 0, _readBuffer, 0, firstRun);
+            Array.Copy(tail, 0, _readBuffer, firstRun, secondRun);
             return true;
+        }
+
+        private void EnsureReadBuffer(int count)
+        {
+            if (_readBuffer == null || _readBuffer.Length != count)
+            {
+                _readBuffer = new float[count];
+            }
         }
 
         /// <inheritdoc />
@@ -265,7 +276,7 @@ namespace AuctionVoice.Audio
             }
 
             IsCapturing = false;
-            _leftoverCount = 0;
+            _assembler?.Reset();
             if (!string.IsNullOrEmpty(DeviceName) || Microphone.IsRecording(DeviceName))
             {
                 Microphone.End(DeviceName);

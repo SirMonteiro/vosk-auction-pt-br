@@ -154,6 +154,41 @@ identity rate, and pre-roll content.
 this class of bug is self-diagnosing: `dur=0ms` means no audio arrived, `rate=48000Hz` means the
 resampler's assumption is checkable at a glance.
 
+### 3.0b Chunk assembler overflow stalled capture permanently
+
+**Symptom.** A repeating main-thread exception:
+
+```
+ArgumentException: Destination array was not long enough...
+  UnityMicrophoneCapture.AppendToLeftover (Int32 count)
+  UnityMicrophoneCapture.Tick ()
+```
+
+with `[CAP] dur=550ms rms=0.0166 rate=48000Hz` — 550 ms captured regardless of how long the key
+was held.
+
+**Cause.** The assembler copied `count` samples to offset `_leftoverCount` in a buffer sized for
+exactly one chunk. A remainder of 100 samples plus a full 4800-sample read needs 4900 slots. The
+drain loop ran *after* the append, so it never freed space.
+
+Critically, the throw happened **before** `_lastSamplePosition` advanced, so the next frame
+re-entered with identical state and threw again. Capture did not just glitch; it stopped for the
+rest of the session.
+
+**Fix.** The assembly logic moved into `Runtime/Audio/ChunkAssembler.cs`, which is UnityEngine-free
+and therefore unit-testable. It enforces the invariant `Count <= ChunkSamples`, clamps `Append` to
+the remaining room, and reports how many samples it accepted. `Tick` now requests
+`min(available, Room)`, so a remainder plus a full read cannot occur.
+
+Also fixed: `AudioClip.GetData` reads **exactly** `data.Length` samples and does not wrap. The
+previous code passed a chunk-sized array for a partial read, over-reading the clip.
+
+**Regression tests.** `Tests/Editor/ChunkAssemblerTests.cs` — nine tests. Removing the clamp makes
+two of them reproduce the exception verbatim.
+
+**Lesson.** Three successive bugs came from this file's inline buffer juggling. The durable fix was
+not the patch but moving the logic where a test could reach it without a microphone.
+
 ### 3.1 `float` is not precise enough for reais
 
 `BidResult.Value` was originally `float`. Single precision has ~7 significant digits, so a bid
@@ -191,6 +226,8 @@ recursion, including the "earliest match in `a`, then in `b`" tie-break.
 | C-11 | Resampling is stateful across chunks (`Resampler`) | Per-chunk rounding loses samples at non-integer ratios and accumulates into time compression |
 | C-12 | `FlushRemainder()` runs before `StopCapture` | Otherwise up to one chunk at the end of every utterance is dropped — exactly where the final syllable is |
 | C-13 | `[CAP]` telemetry on every result | A capture bug and a muted mic produce the same empty-transcript report |
+| C-14 | Chunk assembly lives in `ChunkAssembler`, not inline in capture | Inline buffer juggling produced three bugs no test could reach; the invariant is now enforced and tested |
+| C-15 | `Tick` reads `min(available, assembler.Room)` | A remainder plus a full read overflowed the buffer and threw on the main thread every frame |
 
 ## 5. What is not done
 
@@ -212,4 +249,5 @@ recursion, including the "earliest match in `a`, then in `b`" tie-break.
 | All ASR on background tasks | **Verified by design** — `Task.Run` in `EndSpeechSessionAsync`, `Initialize` awaited off-thread |
 | Push-to-talk returns within 150 ms | **Not measured on device** — decode is 10-13 ms/chunk on this machine; the end-to-end number needs a Unity run |
 | Capture preserves audio duration | **Verified** — 10 TTS clips through the 48 kHz capture chain, duration exact to ±1 ms |
+| Capture never overflows its buffers | **Verified** — 9 `ChunkAssembler` tests, including a randomized read-size sweep |
 | Zero main-thread audio hiccups | **Not measured on device** — capture ticks per frame; no allocation in the release path |

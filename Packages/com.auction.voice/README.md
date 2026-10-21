@@ -145,7 +145,7 @@ produce that identical symptom, so check the `[CAP]` line first:
 | Reading | Meaning |
 |---|---|
 | `dur=0ms` | No audio reached the service. Microphone permission, a held device, or a muted input. |
-| `dur` much less than the time you held the key | Capture is dropping audio — check `rate` against your device's native rate. |
+| `dur` much less than the time you held the key | Capture is dropping audio. Check `rate` against your device's native rate, and check the console for an exception from `UnityMicrophoneCapture.Tick` — a throw there stops capture for the rest of the session, because it happens before the read position advances. |
 | `rms` below ~0.004 | Audio arrived but is effectively silent. Wrong device selected, or input gain at zero. |
 | `dur` and `rms` both sane, transcript still empty | The recogniser received audio it could not decode. Check the model directory is complete (`final.mdl`, `HCLr.fst`, `Gr.fst`). |
 
