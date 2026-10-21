@@ -59,5 +59,11 @@ venv/
 # Toolchain bootstrap
 .toolchain/
 
+# Native Vosk binaries (platform-specific, taken from a Vosk release; see the Plugins README)
+Packages/**/Plugins/**/*.dll
+Packages/**/Plugins/**/*.so
+Packages/**/Plugins/**/*.dylib
+!Packages/**/Plugins/**/*.asmdef
+
 # Logs
 *.log

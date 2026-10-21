@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Headless verification harness for the Unity package.
+
+    The workstation that authors the package has no Unity editor, so the package's own
+    source files and NUnit test files are compiled here directly against net8.0 to prove
+    they build and pass. Unity compiles the exact same files through the .asmdef.
+
+    This project is a development tool: it is not shipped and lives outside Packages/.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>AuctionVoice.HeadlessTests</AssemblyName>
+    <RootNamespace>AuctionVoice.Tests</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS0649;CS0169</NoWarn>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- The Unity-independent core of the package: NLU, Core, Diagnostics. -->
+  <ItemGroup>
+    <Compile Include="../../Packages/com.auction.voice/Runtime/Core/**/*.cs" />
+    <Compile Include="../../Packages/com.auction.voice/Runtime/NLU/**/*.cs" />
+    <Compile Include="../../Packages/com.auction.voice/Runtime/Diagnostics/IAuctionLogger.cs" />
+    <Compile Include="../../Packages/com.auction.voice/Runtime/Audio/PcmAudio.cs" />
+    <Compile Include="../../Packages/com.auction.voice/Tests/Editor/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+</Project>

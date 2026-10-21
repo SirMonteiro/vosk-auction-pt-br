@@ -1,0 +1,28 @@
+{
+  "name": "com.auction.voice",
+  "version": "0.1.0",
+  "displayName": "Auction Voice",
+  "description": "Pure C# port of the verified Vosk + Brazilian Portuguese auction NLU engine. In-process speech recognition (no Python sidecar), push-to-talk with release grace period, and a deterministic bid parser with 40/40 parity against the Python reference suite.",
+  "unity": "2022.3",
+  "keywords": [
+    "vosk",
+    "speech",
+    "asr",
+    "portuguese",
+    "auction",
+    "nlu"
+  ],
+  "author": {
+    "name": "Auction Voice"
+  },
+  "dependencies": {
+    "com.unity.inputsystem": "1.7.0"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Auction Demo",
+      "description": "Push-to-talk UI wired to BidProcessorService.",
+      "path": "Samples~/BasicAuctionDemo"
+    }
+  ]
+}

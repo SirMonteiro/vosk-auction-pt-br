@@ -103,6 +103,15 @@ Deliverables:
 - Debug logging conditionally compiled (`#if UNITY_EDITOR || DEVELOPMENT_BUILD`) with inspector toggle.
 - Comprehensive C# unit test suite mirroring `text_cases.jsonl` (40/40 test cases).
 
+Status: **source complete and verified off-device.** See `09-unity-csharp-implementation.md`.
+
+- Package, runtime, tests and sample are written.
+- 91 C# tests pass; the reference suite is **50/50**.
+- Field-level parity with Python is **4 374/4 374 utterances** (`tools/check_csharp_parity.py`).
+- Verified to compile against netstandard2.1 / C# 9, which is Unity 2022.3's profile.
+- **Not yet verified in a Unity editor**: on-device latency, IL2CPP AOT, and the scene asset.
+  Native `libvosk` binaries are not vendored (platform binaries; see the package README).
+
 Acceptance:
 
 - Can be copied into a clean Unity 2022.3+ / Unity 6 project without compile errors or external Python dependencies.
@@ -147,7 +156,7 @@ The demo is done when, on a machine with only `uv` and `ffmpeg`:
 | P0 | 0.5 d | — | DONE |
 | P1 | 1.5 d | P0 | DONE |
 | P2 | 1 d | P0 | DONE |
-| P-Unity | 2 d | P2 | ACTIVE (branch `csharp`) |
+| P-Unity | 2 d | P2 | DONE (off-device) — branch `csharp` |
 | P3 | 1 d | P1, P2 | Optional / Deferred |
 | P4 | 1 d | P3 | Optional / Deferred |
 | P5 | as needed | P4 | Optional |
